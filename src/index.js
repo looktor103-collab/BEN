@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
+import { scanSlip } from './slip.js';
 
 const app = new Hono();
 const enc = new TextEncoder();
@@ -130,21 +131,87 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
-function parseTx(body) {
-  const { type, amount, category, note = '', date } = body || {};
+const KEY_RE = (uid) => new RegExp('^' + uid + '/[0-9a-f-]{36}$');
+const MAX_IMG = 5 * 1024 * 1024;
+
+function parseTx(body, uid) {
+  const { type, amount, category, note = '', date, image_key = null } = body || {};
   if (type !== 'income' && type !== 'expense') return { error: 'ประเภทไม่ถูกต้อง' };
   const amt = Number(amount);
   if (!Number.isFinite(amt) || amt <= 0 || amt > 1e12) return { error: 'จำนวนเงินไม่ถูกต้อง' };
   if (typeof category !== 'string' || !category.trim() || category.length > 60) return { error: 'กรุณาระบุหมวดหมู่' };
   if (typeof note !== 'string' || note.length > 200) return { error: 'โน้ตยาวเกินไป' };
   if (!validDate(date)) return { error: 'วันที่ไม่ถูกต้อง' };
-  return { value: [type, amt, category.trim(), note.trim(), date] };
+  if (image_key !== null && !(typeof image_key === 'string' && KEY_RE(uid).test(image_key))) return { error: 'รูปแนบไม่ถูกต้อง' };
+  return { value: [type, amt, category.trim(), note.trim(), date, image_key] };
 }
+
+function sniffImage(bytes) {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'image/jpeg';
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
+  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && bytes[8] === 0x57) return 'image/webp';
+  return null;
+}
+
+async function readImage(c) {
+  const form = await c.req.formData().catch(() => null);
+  const file = form && form.get('file');
+  if (!file || typeof file === 'string') return { error: 'ไม่พบไฟล์รูป' };
+  if (file.size > MAX_IMG) return { error: 'รูปใหญ่เกิน 5MB' };
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = sniffImage(bytes);
+  if (!type) return { error: 'รองรับเฉพาะรูป JPEG, PNG, WebP' };
+  return { bytes, type };
+}
+
+app.post('/api/slip/scan', async (c) => {
+  const img = await readImage(c);
+  if (img.error) return c.json({ error: img.error }, 400);
+  try {
+    return c.json(await scanSlip(img.bytes, c.env));
+  } catch (e) {
+    return c.json({ error: e.message || 'อ่านสลิปไม่สำเร็จ' }, 422);
+  }
+});
+
+app.post('/api/uploads', async (c) => {
+  const img = await readImage(c);
+  if (img.error) return c.json({ error: img.error }, 400);
+  const id = crypto.randomUUID();
+  await c.env.UPLOADS.put(`${c.get('uid')}/${id}`, img.bytes, { httpMetadata: { contentType: img.type } });
+  return c.json({ key: `${c.get('uid')}/${id}` }, 201);
+});
+
+app.get('/api/uploads/:uid/:id', async (c) => {
+  if (Number(c.req.param('uid')) !== c.get('uid')) return c.json({ error: 'not found' }, 404);
+  const obj = await c.env.UPLOADS.get(`${c.req.param('uid')}/${c.req.param('id')}`);
+  if (!obj) return c.json({ error: 'not found' }, 404);
+  return new Response(obj.body, {
+    headers: {
+      'Content-Type': obj.httpMetadata?.contentType || 'application/octet-stream',
+      'Cache-Control': 'private, max-age=86400',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
+});
+
+app.delete('/api/uploads/:uid/:id', async (c) => {
+  const uid = c.get('uid');
+  if (Number(c.req.param('uid')) !== uid || !/^[0-9a-f-]{36}$/.test(c.req.param('id'))) return c.json({ error: 'not found' }, 404);
+  const key = `${uid}/${c.req.param('id')}`;
+  // never delete a photo that a transaction still references
+  const used = await c.env.DB.prepare('SELECT 1 FROM transactions WHERE user_id=? AND image_key=?').bind(uid, key).first();
+  if (used) return c.json({ error: 'รูปนี้ถูกใช้อยู่' }, 409);
+  await c.env.UPLOADS.delete(key);
+  return c.json({ ok: true });
+});
+
+const dropImage = (env, key) => (key ? env.UPLOADS.delete(key).catch(() => {}) : null);
 
 app.get('/api/transactions', async (c) => {
   const from = c.req.query('from');
   const to = c.req.query('to');
-  let sql = 'SELECT id, type, amount, category, note, date FROM transactions WHERE user_id = ?';
+  let sql = 'SELECT id, type, amount, category, note, date, image_key FROM transactions WHERE user_id = ?';
   const args = [c.get('uid')];
   if (from && validDate(from)) { sql += ' AND date >= ?'; args.push(from); }
   if (to && validDate(to)) { sql += ' AND date <= ?'; args.push(to); }
@@ -154,28 +221,33 @@ app.get('/api/transactions', async (c) => {
 });
 
 app.post('/api/transactions', async (c) => {
-  const p = parseTx(await c.req.json().catch(() => null));
+  const p = parseTx(await c.req.json().catch(() => null), c.get('uid'));
   if (p.error) return c.json({ error: p.error }, 400);
   const r = await c.env.DB.prepare(
-    'INSERT INTO transactions (user_id, type, amount, category, note, date) VALUES (?, ?, ?, ?, ?, ?)'
+    'INSERT INTO transactions (user_id, type, amount, category, note, date, image_key) VALUES (?, ?, ?, ?, ?, ?, ?)'
   ).bind(c.get('uid'), ...p.value).run();
   return c.json({ id: r.meta.last_row_id }, 201);
 });
 
 app.put('/api/transactions/:id', async (c) => {
-  const p = parseTx(await c.req.json().catch(() => null));
+  const uid = c.get('uid'), id = Number(c.req.param('id'));
+  const p = parseTx(await c.req.json().catch(() => null), uid);
   if (p.error) return c.json({ error: p.error }, 400);
-  const r = await c.env.DB.prepare(
-    'UPDATE transactions SET type=?, amount=?, category=?, note=?, date=? WHERE id=? AND user_id=?'
-  ).bind(...p.value, Number(c.req.param('id')), c.get('uid')).run();
-  if (!r.meta.changes) return c.json({ error: 'ไม่พบรายการ' }, 404);
+  const old = await c.env.DB.prepare('SELECT image_key FROM transactions WHERE id=? AND user_id=?').bind(id, uid).first();
+  if (!old) return c.json({ error: 'ไม่พบรายการ' }, 404);
+  await c.env.DB.prepare(
+    'UPDATE transactions SET type=?, amount=?, category=?, note=?, date=?, image_key=? WHERE id=? AND user_id=?'
+  ).bind(...p.value, id, uid).run();
+  if (old.image_key && old.image_key !== p.value[5]) await dropImage(c.env, old.image_key);
   return c.json({ ok: true });
 });
 
 app.delete('/api/transactions/:id', async (c) => {
-  const r = await c.env.DB.prepare('DELETE FROM transactions WHERE id=? AND user_id=?')
-    .bind(Number(c.req.param('id')), c.get('uid')).run();
-  if (!r.meta.changes) return c.json({ error: 'ไม่พบรายการ' }, 404);
+  const uid = c.get('uid'), id = Number(c.req.param('id'));
+  const old = await c.env.DB.prepare('SELECT image_key FROM transactions WHERE id=? AND user_id=?').bind(id, uid).first();
+  if (!old) return c.json({ error: 'ไม่พบรายการ' }, 404);
+  await c.env.DB.prepare('DELETE FROM transactions WHERE id=? AND user_id=?').bind(id, uid).run();
+  await dropImage(c.env, old.image_key);
   return c.json({ ok: true });
 });
 

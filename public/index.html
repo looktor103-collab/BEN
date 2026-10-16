@@ -2,27 +2,36 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="theme-color" content="#0e1116" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Ben · การเงินส่วนบุคคล</title>
+<meta name="description" content="จดรายรับ รายจ่าย ถ่ายสลิป ตั้งงบ และเป้าหมายการออม" />
+<meta name="theme-color" content="#faf7f2" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Ben" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<div id="loadingView" class="center muted">กำลังโหลด…</div>
+<div id="loadingView" class="center muted">🪙 กำลังโหลด…</div>
 
 <div id="loginView" class="center" hidden>
   <form class="login-card" id="authForm" autocomplete="on">
-    <div class="brand">💰</div>
+    <div class="brand">🪙</div>
     <h1 id="authTitle">เข้าสู่ระบบ</h1>
-    <p class="sub" id="authSub">Ben · แดชบอร์ดการเงินส่วนบุคคล</p>
+    <p class="sub" id="authSub">Ben · การเงินส่วนบุคคล</p>
     <div class="err" id="authError" hidden></div>
     <div class="field">
       <label for="username">Username</label>
-      <input id="username" name="username" autocomplete="username" required minlength="3" maxlength="64" pattern="[A-Za-z0-9_.@+-]{3,64}" title="a-z, 0-9, _ . - @ + ยาว 3-64 ตัว" />
+      <input id="username" name="username" autocomplete="username" required minlength="3" maxlength="64" pattern="[A-Za-z0-9_.@+\-]{3,64}" title="a-z, 0-9, _ . - @ + ยาว 3-64 ตัว" />
     </div>
     <div class="field">
       <label for="password">รหัสผ่าน</label>
@@ -39,10 +48,10 @@
 
 <main id="appView" hidden>
   <div class="wrap">
-    <div class="topbar">
-      <div>
-        <h1>💰 Ben · การเงินส่วนบุคคล</h1>
-        <div class="sub">รายรับ รายจ่าย และงบประมาณของคุณ</div>
+    <header class="topbar">
+      <div class="hello">
+        <h1>🪙 <span id="greeting">สวัสดี</span></h1>
+        <div class="sub">จดให้ครบ ใช้ให้พอดี ออมให้ถึงฝัน ✨</div>
       </div>
       <div class="toolbar">
         <div class="bell-wrap">
@@ -50,77 +59,91 @@
           <div class="notif" id="notifPanel" hidden></div>
         </div>
         <button class="icon-btn" id="themeBtn" aria-label="สลับโหมดมืด/สว่าง">🌙</button>
-        <button class="icon-btn menu-btn" id="menuBtn" aria-label="เมนู">≡</button>
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="เมนู">☰</button>
       </div>
-    </div>
+    </header>
 
     <div class="scrim" id="scrim" hidden></div>
     <aside class="drawer" id="drawer">
       <div class="drawer-head"><b id="userName"></b><button class="icon-btn menu-btn" id="closeMenu" aria-label="ปิดเมนู">✕</button></div>
       <label class="muted" for="period">ช่วงเวลา</label>
       <select id="period">
-        <option value="month" selected>เดือนนี้</option>
-        <option value="30">30 วันล่าสุด</option>
-        <option value="90">3 เดือนล่าสุด</option>
-        <option value="year">ปีนี้</option>
-        <option value="all">ทั้งหมด</option>
+        <option value="month" selected>📅 เดือนนี้</option>
+        <option value="30">🗓️ 30 วันล่าสุด</option>
+        <option value="90">🗓️ 3 เดือนล่าสุด</option>
+        <option value="year">🎆 ปีนี้</option>
+        <option value="all">♾️ ทั้งหมด</option>
       </select>
-      <button class="btn-sm primary" id="addBtn">+ เพิ่มรายการ</button>
-      <button class="btn-sm" id="exportBtn">ส่งออก CSV</button>
+      <button class="btn-sm primary" id="addBtn">➕ เพิ่มรายการ</button>
+      <button class="btn-sm" id="scanBtn">📸 สแกนสลิป</button>
+      <button class="btn-sm" id="exportBtn">📤 ส่งออก CSV</button>
+      <button class="btn-sm" id="installBtn" hidden>📲 ติดตั้งแอป</button>
+      <span class="hint" id="iosHint" hidden>iPhone: กดปุ่มแชร์ ⎙ แล้วเลือก “เพิ่มไปยังหน้าจอโฮม”</span>
       <span class="muted live" id="lastUpdate"></span>
-      <button class="btn-sm" id="signOutBtn">ออกจากระบบ</button>
+      <button class="btn-sm" id="signOutBtn">👋 ออกจากระบบ</button>
     </aside>
 
-    <div class="kpis">
-      <div class="kpi" style="--bar:var(--income)"><div class="label">รายรับ</div><div class="value" id="kIncome">–</div></div>
-      <div class="kpi" style="--bar:var(--expense)"><div class="label">รายจ่าย</div><div class="value" id="kExpense">–</div></div>
-      <div class="kpi" style="--bar:var(--accent)"><div class="label">คงเหลือสุทธิ</div><div class="value" id="kNet">–</div></div>
-      <div class="kpi" style="--bar:var(--warn)"><div class="label">อัตราการออม</div><div class="value" id="kRate">–</div><div class="delta muted" id="kCount"></div></div>
-    </div>
+    <section class="kpis">
+      <div class="kpi" style="--tint:var(--income-soft)"><div class="emo">🤑</div><div class="label">รายรับ</div><div class="value" id="kIncome">–</div></div>
+      <div class="kpi" style="--tint:var(--expense-soft)"><div class="emo">💸</div><div class="label">รายจ่าย</div><div class="value" id="kExpense">–</div></div>
+      <div class="kpi" style="--tint:var(--accent-soft)"><div class="emo">🪙</div><div class="label">คงเหลือสุทธิ</div><div class="value" id="kNet">–</div></div>
+      <div class="kpi" style="--tint:var(--warn-soft)"><div class="emo">🐷</div><div class="label">อัตราการออม</div><div class="value" id="kRate">–</div><div class="delta muted" id="kCount"></div></div>
+    </section>
 
     <div class="grid">
-      <div class="card"><h2>รายรับ–รายจ่าย</h2><div class="hint">รายวันในช่วงที่เลือก</div>
+      <div class="card"><h2>📈 รายรับ–รายจ่าย</h2><div class="hint">รายวันในช่วงที่เลือก</div>
         <div class="chart-wrap"><canvas id="trendChart"></canvas></div></div>
-      <div class="card"><h2>รายจ่ายตามหมวดหมู่</h2><div class="hint">สัดส่วนในช่วงที่เลือก</div>
+      <div class="card"><h2>🍩 รายจ่ายตามหมวด</h2><div class="hint">สัดส่วนในช่วงที่เลือก</div>
         <div class="chart-wrap sm"><canvas id="expenseChart"></canvas></div></div>
     </div>
 
-    <div class="card goals-card"><h2>🎯 เป้าหมายการออม</h2><div class="hint">ความคืบหน้า = รายรับ − รายจ่าย นับตั้งแต่วันที่เริ่ม (อัปเดตอัตโนมัติ)</div>
+    <div class="card goals-card"><h2>🎯 เป้าหมายการออม</h2><div class="hint">ความคืบหน้า = รายรับ − รายจ่าย ตั้งแต่วันที่เริ่ม (อัปเดตอัตโนมัติ)</div>
       <div id="goalList"></div>
       <form id="goalForm" class="inline-form">
-        <input id="goalName" placeholder="ชื่อเป้าหมาย เช่น กองทุนฉุกเฉิน" required maxlength="80" />
+        <input id="goalName" placeholder="ชื่อเป้าหมาย เช่น เที่ยวญี่ปุ่น ✈️" required maxlength="80" />
         <input id="goalTarget" type="number" min="1" step="1" placeholder="เป้าหมาย (บาท)" required />
-        <input id="goalStart" type="date" required />
+        <input id="goalStart" type="date" required aria-label="วันที่เริ่ม" />
         <button class="btn-sm primary" type="submit">เพิ่มเป้าหมาย</button>
       </form></div>
 
     <div class="grid3">
-      <div class="card"><h2>งบประมาณรายเดือน</h2><div class="hint">เทียบรายจ่าย<b>เดือนนี้</b>กับวงเงินที่ตั้งไว้</div>
+      <div class="card"><h2>🧾 งบประมาณรายเดือน</h2><div class="hint">เทียบรายจ่าย<b>เดือนนี้</b>กับวงเงินที่ตั้งไว้</div>
         <div id="budgetList"></div>
         <form id="budgetForm" class="inline-form">
           <input id="budCat" placeholder="หมวดหมู่ เช่น อาหาร" list="catList" required maxlength="60" />
           <input id="budLimit" type="number" min="0" step="1" placeholder="วงเงิน/เดือน (0 = ลบ)" required />
           <button class="btn-sm primary" type="submit">บันทึก</button>
         </form></div>
-      <div class="card"><h2>รายการ</h2>
+      <div class="card"><h2>📒 รายการ</h2>
         <div class="hint" id="txHint"></div>
-        <div class="table-scroll"><table><thead><tr><th>วันที่</th><th>หมวด</th><th>โน้ต</th><th class="right">จำนวน</th><th></th></tr></thead>
-        <tbody id="txBody"></tbody></table></div></div>
+        <div id="txList" class="tx-list"></div></div>
     </div>
   </div>
 
-  <button class="fab" id="fabBtn" aria-label="เพิ่มรายการ">+</button>
+  <button class="fab" id="fabBtn" aria-label="เพิ่มรายการ">＋</button>
   <datalist id="catList"></datalist>
+
+  <input id="slipInput" type="file" accept="image/*" hidden />
+  <input id="attachInput" type="file" accept="image/*" hidden />
 
   <dialog id="txDialog">
     <form id="txForm" method="dialog">
-      <h2 id="txTitle">เพิ่มรายการ</h2>
+      <h2 id="txTitle">➕ เพิ่มรายการ</h2>
       <div class="seg">
-        <label><input type="radio" name="type" value="expense" checked /> รายจ่าย</label>
-        <label><input type="radio" name="type" value="income" /> รายรับ</label>
+        <label><input type="radio" name="type" value="expense" checked /><span>💸 รายจ่าย</span></label>
+        <label><input type="radio" name="type" value="income" /><span>🤑 รายรับ</span></label>
+      </div>
+      <div class="slip-row">
+        <button class="btn-sm soft" type="button" id="dlgScan">📸 สแกนสลิป</button>
+        <button class="btn-sm soft" type="button" id="dlgAttach">🖼️ แนบรูป</button>
+      </div>
+      <div class="hint" id="scanStatus" hidden></div>
+      <div class="preview" id="preview" hidden>
+        <img id="previewImg" alt="รูปแนบ" />
+        <button class="row-btn" type="button" id="removeImg" aria-label="ลบรูปแนบ">✕</button>
       </div>
       <div class="field"><label for="txAmount">จำนวนเงิน (บาท)</label>
-        <input id="txAmount" type="number" min="0.01" step="0.01" required /></div>
+        <input id="txAmount" type="number" inputmode="decimal" min="0.01" step="0.01" required /></div>
       <div class="field"><label for="txCat">หมวดหมู่</label>
         <input id="txCat" list="catList" required maxlength="60" /></div>
       <div class="field"><label for="txDate">วันที่</label>
@@ -130,9 +153,14 @@
       <div class="err" id="txError" hidden></div>
       <div class="dialog-actions">
         <button class="btn-sm" type="button" id="txCancel">ยกเลิก</button>
-        <button class="btn-sm primary" type="submit">บันทึก</button>
+        <button class="btn-sm primary" type="submit" id="txSave">บันทึก</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="lightbox" class="lightbox">
+    <img id="lightboxImg" alt="รูปแนบ" />
+    <button class="btn-sm" type="button" id="lightboxClose">ปิด</button>
   </dialog>
 </main>
 

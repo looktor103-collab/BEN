@@ -12,3 +12,10 @@ run_worker_first = ["/api/*"]
 binding = "DB"
 database_name = "ben-db"
 database_id = "2c20f400-07f8-4f5c-bf5d-d0a3ed726b16"
+
+[[r2_buckets]]
+binding = "UPLOADS"
+bucket_name = "ben-uploads"
+
+[ai]
+binding = "AI"

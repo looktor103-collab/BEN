@@ -3,7 +3,11 @@
   const show = (el, on) => (el.hidden = !on);
   const fmtTHB = (n) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(n);
   const fmtShort = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(0) + 'K' : '' + n);
-  const PALETTE = ['#f87171', '#fbbf24', '#60a5fa', '#34d399', '#a78bfa', '#f472b6', '#22d3ee', '#94a3b8', '#fb923c', '#a3e635'];
+  const EMOJI_RULES = [[/อาหาร|กิน|ข้าว|ร้าน/, '🍜'], [/เครื่องดื่ม|กาแฟ|ชา|น้ำ(?!มัน|ไฟ)/, '🧋'], [/เดินทาง|รถ|น้ำมัน|แท็กซี่|บีทีเอส|เรือ/, '🚌'], [/ช้อป|เสื้อ|ของใช้/, '🛍️'], [/ที่อยู่|บ้าน|เช่า|ห้อง|คอนโด/, '🏠'], [/บิล|สาธารณูปโภค|ไฟ|เน็ต|โทรศัพท์/, '🧾'], [/สุขภาพ|ยา|หมอ|โรงพยาบาล|ฟิตเนส/, '💊'], [/บันเทิง|หนัง|เกม|คอนเสิร์ต/, '🎬'], [/การศึกษา|เรียน|หนังสือ|คอร์ส/, '📚'], [/ท่องเที่ยว|เที่ยว|โรงแรม|ตั๋วเครื่องบิน/, '✈️'], [/โอน/, '💌'], [/ออม|ลงทุน|หุ้น|กองทุน/, '🐷'], [/เงินเดือน|โบนัส/, '💰'], [/ฟรีแลนซ์|รายได้|ขาย/, '🤑'], [/ของขวัญ|บริจาค/, '🎁'], [/สัตว์|แมว|หมา/, '🐱']];
+  const emojiFor = (cat, type) => { for (const [re, e] of EMOJI_RULES) if (re.test(cat)) return e; return type === 'income' ? '💸' : '🪙'; };
+  const DEFAULT_CATS = ['อาหาร', 'เครื่องดื่ม', 'เดินทาง', 'ช้อปปิ้ง', 'ที่อยู่อาศัย', 'บิล/สาธารณูปโภค', 'สุขภาพ', 'บันเทิง', 'การศึกษา', 'โอนเงิน', 'ท่องเที่ยว', 'ออม/ลงทุน', 'เงินเดือน', 'อื่นๆ'];
+  const PALETTE = ['#ff8fab', '#ffc46b', '#8b7cf6', '#5ed6a5', '#7cc4ff', '#f9a8d4', '#a3e635', '#fb923c', '#c4b5fd', '#94a3b8'];
+  const _OLD_PALETTE = ['#f87171', '#fbbf24', '#60a5fa', '#34d399', '#a78bfa', '#f472b6', '#22d3ee', '#94a3b8', '#fb923c', '#a3e635'];
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const thDate = (s) => new Date(s + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
 
@@ -60,15 +64,15 @@
   const trend = new Chart($('trendChart'), {
     type: 'line',
     data: { labels: [], datasets: [
-      { label: 'รายรับ', data: [], borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,.12)', fill: true, tension: .35, pointRadius: 0, borderWidth: 2 },
-      { label: 'รายจ่าย', data: [], borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,.10)', fill: true, tension: .35, pointRadius: 0, borderWidth: 2 }] },
+      { label: 'รายรับ', data: [], borderColor: '#34c78f', backgroundColor: 'rgba(52,199,143,.14)', fill: true, tension: .35, pointRadius: 0, borderWidth: 2 },
+      { label: 'รายจ่าย', data: [], borderColor: '#ff7a96', backgroundColor: 'rgba(255,122,150,.12)', fill: true, tension: .35, pointRadius: 0, borderWidth: 2 }] },
     options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
       plugins: { legend: { labels: { usePointStyle: true, boxWidth: 8, color: '#8b95a7' } }, tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtTHB(c.parsed.y) } } },
       scales: { x: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#8b95a7' } }, y: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#8b95a7', callback: fmtShort } } } },
   });
   const expChart = new Chart($('expenseChart'), {
     type: 'doughnut',
-    data: { labels: [], datasets: [{ data: [], backgroundColor: PALETTE, borderWidth: 0, hoverOffset: 6 }] },
+    data: { labels: [], datasets: [{ data: [], backgroundColor: PALETTE, borderWidth: 0, hoverOffset: 6, borderRadius: 6 }] },
     options: { maintainAspectRatio: false, cutout: '62%',
       plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, color: '#8b95a7', font: { size: 11 } } }, tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtTHB(c.parsed) } } } },
   });
@@ -127,7 +131,7 @@
     renderGoals();
     renderNotifs();
     renderTable();
-    const cats = new Set([...ALL.map((x) => x.category), ...BUDGETS.map((b) => b.category)]);
+    const cats = new Set([...DEFAULT_CATS, ...ALL.map((x) => x.category), ...BUDGETS.map((b) => b.category)]);
     const dl = $('catList');
     dl.replaceChildren(...[...cats].map((c) => Object.assign(document.createElement('option'), { value: c })));
   }
@@ -145,7 +149,7 @@
       wrap.className = 'bud';
       const head = document.createElement('div');
       head.className = 'bud-head';
-      const l = document.createElement('span'); l.textContent = b.category;
+      const l = document.createElement('span'); l.textContent = emojiFor(b.category, 'expense') + ' ' + b.category;
       const r = document.createElement('span'); r.textContent = `${fmtTHB(s)} / ${fmtTHB(b.monthly_limit)}`;
       head.append(l, r);
       const bar = document.createElement('div');
@@ -159,58 +163,37 @@
   }
 
   function renderTable() {
-    const body = $('txBody');
-    body.replaceChildren();
+    const root = $('txList');
+    root.replaceChildren();
     $('txHint').textContent = TX.length > 100 ? `แสดง 100 จาก ${TX.length} รายการล่าสุด` : '';
+    if (!TX.length) { root.append(Object.assign(document.createElement('div'), { className: 'empty-state', textContent: '🌱 ยังไม่มีรายการในช่วงนี้ กด ＋ เพื่อเริ่มจดได้เลย' })); return; }
     TX.slice(0, 100).forEach((x) => {
-      const tr = document.createElement('tr');
-      const cell = (txt, cls) => { const td = document.createElement('td'); td.textContent = txt; if (cls) td.className = cls; return td; };
-      tr.append(cell(thDate(x.date)), cell(x.category), cell(x.note),
-        cell((x.type === 'income' ? '+' : '−') + fmtTHB(x.amount), 'right ' + (x.type === 'income' ? 'in' : 'out')));
-      const act = document.createElement('td');
-      act.className = 'right';
-      const edit = Object.assign(document.createElement('button'), { className: 'row-btn', textContent: '✎', title: 'แก้ไข' });
+      const row = document.createElement('div');
+      row.className = 'tx ' + x.type;
+      const bubble = Object.assign(document.createElement('div'), { className: 'bubble', textContent: emojiFor(x.category, x.type) });
+      const info = document.createElement('div');
+      info.className = 'info';
+      info.append(Object.assign(document.createElement('div'), { className: 'title', textContent: x.category }),
+        Object.assign(document.createElement('div'), { className: 'meta', textContent: thDate(x.date) + (x.note ? ' · ' + x.note : '') }));
+      const amt = Object.assign(document.createElement('div'), { className: 'amt', textContent: (x.type === 'income' ? '+' : '−') + fmtTHB(x.amount) });
+      const acts = document.createElement('div');
+      acts.className = 'acts';
+      if (x.image_key) {
+        const pic = Object.assign(document.createElement('button'), { className: 'row-btn', textContent: '📎', title: 'ดูรูปแนบ' });
+        pic.onclick = () => openLightbox('/api/uploads/' + x.image_key);
+        acts.append(pic);
+      }
+      const edit = Object.assign(document.createElement('button'), { className: 'row-btn', textContent: '✏️', title: 'แก้ไข' });
       edit.onclick = () => openDialog(x);
-      const del = Object.assign(document.createElement('button'), { className: 'row-btn', textContent: '🗑', title: 'ลบ' });
+      const del = Object.assign(document.createElement('button'), { className: 'row-btn', textContent: '🗑️', title: 'ลบ' });
       del.onclick = async () => {
         if (!confirm(`ลบรายการ "${x.category}" ${fmtTHB(x.amount)}?`)) return;
         await api('/transactions/' + x.id, { method: 'DELETE' }).catch((e) => alert(e.message));
         load();
       };
-      act.append(edit, del);
-      tr.append(act);
-      body.append(tr);
-    });
-  }
-
-  function renderGoals() {
-    const root = $('goalList');
-    root.replaceChildren();
-    if (!GOALS.length) { root.append(Object.assign(document.createElement('div'), { className: 'hint', textContent: 'ยังไม่มีเป้าหมาย' })); return; }
-    GOALS.forEach((g) => {
-      const saved = Math.max(g.saved, 0), pct = Math.min((saved / g.target) * 100, 100);
-      const wrap = document.createElement('div');
-      wrap.className = 'goal' + (saved >= g.target ? ' done' : '');
-      const head = document.createElement('div');
-      head.className = 'goal-head';
-      const l = document.createElement('span');
-      l.textContent = (saved >= g.target ? '✅ ' : '') + g.name;
-      const r = document.createElement('span');
-      r.textContent = `${fmtTHB(saved)} / ${fmtTHB(g.target)} (${pct.toFixed(0)}%)`;
-      const del = Object.assign(document.createElement('button'), { className: 'row-btn', textContent: '🗑', title: 'ลบเป้าหมาย' });
-      del.onclick = async () => {
-        if (!confirm(`ลบเป้าหมาย "${g.name}"?`)) return;
-        await api('/goals/' + g.id, { method: 'DELETE' }).catch((e) => alert(e.message));
-        load();
-      };
-      head.append(l, r, del);
-      const bar = document.createElement('div');
-      bar.className = 'bar';
-      const fill = document.createElement('i');
-      fill.style.width = pct + '%';
-      bar.append(fill);
-      wrap.append(head, bar);
-      root.append(wrap);
+      acts.append(edit, del);
+      row.append(bubble, info, amt, acts);
+      root.append(row);
     });
   }
 
@@ -250,16 +233,16 @@
   // ---------- theme ----------
   function applyTheme(t) {
     document.documentElement.dataset.theme = t;
-    $('themeBtn').textContent = t === 'light' ? '☀️' : '🌙';
-    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f6fa' : '#0e1116';
-    const muted = t === 'light' ? '#667085' : '#8b95a7', grid = t === 'light' ? 'rgba(0,0,0,.08)' : 'rgba(255,255,255,.06)';
+    $('themeBtn').textContent = t === 'light' ? '🌙' : '☀️';
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#faf7f2' : '#15131b';
+    const muted = t === 'light' ? '#8a8397' : '#9d96ae', grid = t === 'light' ? 'rgba(70,50,100,.07)' : 'rgba(255,255,255,.06)';
     trend.options.scales.x.ticks.color = trend.options.scales.y.ticks.color = muted;
     trend.options.scales.x.grid.color = trend.options.scales.y.grid.color = grid;
     trend.options.plugins.legend.labels.color = expChart.options.plugins.legend.labels.color = muted;
     trend.update(); expChart.update();
   }
-  let theme = 'dark';
-  try { theme = localStorage.getItem('ben_theme') || 'dark'; } catch {}
+  let theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  try { theme = localStorage.getItem('ben_theme') || theme; } catch {}
   $('themeBtn').onclick = () => {
     theme = theme === 'dark' ? 'light' : 'dark';
     try { localStorage.setItem('ben_theme', theme); } catch {}
@@ -273,29 +256,122 @@
   $('closeMenu').onclick = $('scrim').onclick = () => setMenu(false);
   $('fabBtn').onclick = () => openDialog(null);
 
+  // ---------- images: resize, upload, slip scan ----------
+  const MAX_SIDE = 1400;
+  async function shrink(file) {
+    let bmp;
+    try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+    catch { bmp = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); }); }
+    const w = bmp.width || bmp.naturalWidth, h = bmp.height || bmp.naturalHeight, k = Math.min(1, MAX_SIDE / Math.max(w, h));
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+    cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+    return new Promise((res, rej) => cv.toBlob((bl) => (bl ? res(bl) : rej(new Error('ย่อรูปไม่สำเร็จ'))), 'image/jpeg', 0.85));
+  }
+  async function postImage(path, blob) {
+    const fd = new FormData();
+    fd.append('file', blob, 'photo.jpg');
+    const res = await fetch('/api' + path, { method: 'POST', body: fd, credentials: 'same-origin' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'อัปโหลดไม่สำเร็จ');
+    return data;
+  }
+
+  // image state of the open dialog: key currently attached, the one it had on open, keys uploaded this session
+  let imageKey = null, originalKey = null, sessionKeys = new Set();
+  function setImage(key) {
+    imageKey = key;
+    show($('preview'), !!key);
+    if (key) $('previewImg').src = '/api/uploads/' + key;
+  }
+  const dropUnsaved = (keep) => {
+    sessionKeys.forEach((k) => { if (k !== keep) api('/uploads/' + k, { method: 'DELETE' }).catch(() => {}); });
+    sessionKeys = new Set();
+  };
+  async function attach(blob) {
+    const { key } = await postImage('/uploads', blob);
+    sessionKeys.add(key);
+    setImage(key);
+  }
+  const scanMsg = (t, err) => { const el = $('scanStatus'); el.textContent = t || ''; el.style.color = err ? 'var(--expense)' : ''; show(el, !!t); };
+
+  async function handleSlip(file) {
+    if (!file) return;
+    const btns = [$('dlgScan'), $('dlgAttach'), $('txSave')];
+    btns.forEach((x) => (x.disabled = true));
+    scanMsg('✨ กำลังอ่านสลิป… (อาจใช้เวลา 5–15 วินาที)');
+    try {
+      const blob = await shrink(file);
+      const [scan] = await Promise.all([
+        postImage('/slip/scan', blob).catch((e) => ({ _err: e.message })),
+        attach(blob).catch(() => {}),
+      ]);
+      document.querySelector('input[name=type][value=expense]').checked = true;
+      if (scan._err) { scanMsg('😅 ' + scan._err + ' (แนบรูปไว้ให้แล้ว กรอกเองได้เลย)', true); return; }
+      if (scan.amount) $('txAmount').value = scan.amount;
+      if (scan.category) $('txCat').value = scan.category;
+      if (scan.date) $('txDate').value = scan.date;
+      if (scan.note) $('txNote').value = scan.note;
+      const missing = [!scan.amount && 'จำนวนเงิน', !scan.date && 'วันที่'].filter(Boolean);
+      scanMsg(missing.length ? `🧐 อ่านได้บางส่วน ช่วยกรอก${missing.join(' และ ')}เพิ่มนะ` : '✅ อ่านสลิปแล้ว ตรวจความถูกต้องก่อนบันทึกนะ');
+    } catch (err) {
+      scanMsg('😅 ' + err.message, true);
+    } finally {
+      btns.forEach((x) => (x.disabled = false));
+    }
+  }
+  $('slipInput').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; handleSlip(f); };
+  $('dlgScan').onclick = () => $('slipInput').click();
+  $('dlgAttach').onclick = () => $('attachInput').click();
+  $('attachInput').onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { scanMsg('⏳ กำลังอัปโหลดรูป…'); await attach(await shrink(f)); scanMsg(''); }
+    catch (err) { scanMsg('😅 ' + err.message, true); }
+  };
+  $('removeImg').onclick = () => {
+    const k = imageKey;
+    setImage(null);
+    if (k && sessionKeys.has(k)) { sessionKeys.delete(k); api('/uploads/' + k, { method: 'DELETE' }).catch(() => {}); }
+  };
+  $('previewImg').onclick = () => imageKey && openLightbox('/api/uploads/' + imageKey);
+
+  function openLightbox(url) { $('lightboxImg').src = url; $('lightbox').showModal(); }
+  $('lightboxClose').onclick = () => $('lightbox').close();
+  $('lightbox').addEventListener('click', (e) => { if (e.target === $('lightbox')) $('lightbox').close(); });
+
   // ---------- transaction dialog ----------
   const dlg = $('txDialog');
   function openDialog(x) {
     editingId = x ? x.id : null;
-    $('txTitle').textContent = x ? 'แก้ไขรายการ' : 'เพิ่มรายการ';
+    $('txTitle').textContent = x ? '✏️ แก้ไขรายการ' : '➕ เพิ่มรายการ';
     document.querySelector(`input[name=type][value=${x ? x.type : 'expense'}]`).checked = true;
     $('txAmount').value = x ? x.amount : '';
     $('txCat').value = x ? x.category : '';
     $('txDate').value = x ? x.date : ymd(new Date());
     $('txNote').value = x ? x.note : '';
+    sessionKeys = new Set();
+    originalKey = x ? x.image_key || null : null;
+    setImage(originalKey);
+    scanMsg('');
     show($('txError'), false);
     dlg.showModal();
   }
   $('addBtn').onclick = () => { setMenu(false); openDialog(null); };
-  $('txCancel').onclick = () => dlg.close();
+  $('scanBtn').onclick = () => { setMenu(false); openDialog(null); $('slipInput').click(); };
+  const closeDialog = () => { dropUnsaved(null); dlg.close(); };
+  $('txCancel').onclick = closeDialog;
+  dlg.addEventListener('cancel', () => dropUnsaved(null)); // Esc key
   $('txForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const body = {
       type: document.querySelector('input[name=type]:checked').value,
       amount: $('txAmount').value, category: $('txCat').value, date: $('txDate').value, note: $('txNote').value,
+      image_key: imageKey,
     };
     try {
       await (editingId ? api('/transactions/' + editingId, { method: 'PUT', body }) : api('/transactions', { method: 'POST', body }));
+      dropUnsaved(imageKey);
       dlg.close();
       load();
     } catch (err) { $('txError').textContent = err.message; show($('txError'), true); }
@@ -339,11 +415,29 @@
       show($('loginView'), false);
       show($('appView'), true);
       $('userName').textContent = me.user.username;
+      const hr = new Date().getHours();
+      $('greeting').textContent = `${hr < 12 ? 'อรุณสวัสดิ์' : hr < 18 ? 'สวัสดียามบ่าย' : 'สวัสดียามเย็น'} ${me.user.username} 👋`;
       await load();
+      if (new URLSearchParams(location.search).get('add')) { history.replaceState(null, '', '/'); openDialog(null); }
     } catch (err) {
       $('loadingView').textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: ' + err.message;
     }
   }
+  // ---------- PWA ----------
+  if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  let deferredInstall = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstall = e; show($('installBtn'), true); });
+  window.addEventListener('appinstalled', () => { deferredInstall = null; show($('installBtn'), false); });
+  $('installBtn').onclick = async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    await deferredInstall.userChoice.catch(() => {});
+    deferredInstall = null;
+    show($('installBtn'), false);
+  };
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone) show($('iosHint'), true);
+
   boot();
   setInterval(() => {
     if (document.hidden || dlg.open || $('appView').hidden) return;
