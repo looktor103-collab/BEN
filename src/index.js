@@ -1,6 +1,10 @@
 import { Hono } from 'hono';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 import { scanSlip } from './slip.js';
+import { bumpSync } from './shared.js';
+import { goalsWithProgress } from './queries.js';
+import { registerAccountRoutes } from './accounts.js';
+import { registerAiRoutes, aiAllowed, learnCategory } from './ai.js';
 
 const app = new Hono();
 const enc = new TextEncoder();
@@ -64,6 +68,15 @@ function setSessionCookie(c, token) {
 const validUsername = (u) => typeof u === 'string' && /^[A-Za-z0-9_.@+-]{3,64}$/.test(u);
 const validPassword = (p) => typeof p === 'string' && p.length >= 8 && p.length <= 200;
 const validDate = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d));
+
+// Security headers on API responses
+app.use('/api/*', async (c, next) => {
+  await next();
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('X-Frame-Options', 'DENY');
+  c.header('Referrer-Policy', 'same-origin');
+  if (!c.res.headers.has('Cache-Control')) c.header('Cache-Control', 'no-store');
+});
 
 // CSRF: block state-changing requests that originate from another site
 app.use('/api/*', async (c, next) => {
@@ -133,6 +146,23 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
+// Every successful write bumps a per-user counter that other devices poll (/api/sync)
+const SYNC_PATHS = /^\/api\/(transactions|budgets|goals|accounts|privacy)/;
+app.use('/api/*', async (c, next) => {
+  await next();
+  if (c.req.method !== 'GET' && c.res.status < 400 && SYNC_PATHS.test(new URL(c.req.url).pathname)) {
+    await bumpSync(c.env, c.get('uid')).catch(() => {});
+  }
+});
+
+app.get('/api/sync', async (c) => {
+  const r = await c.env.DB.prepare('SELECT v FROM sync WHERE user_id = ?').bind(c.get('uid')).first();
+  return c.json({ v: r ? r.v : 0 });
+});
+
+registerAccountRoutes(app);
+registerAiRoutes(app);
+
 // ---------- account: change username / password (needs the current password) ----------
 async function verifyCurrent(c, uid, password) {
   const u = await c.env.DB.prepare('SELECT id, username, pass_hash, salt, session_version FROM users WHERE id = ?').bind(uid).first();
@@ -182,7 +212,7 @@ const KEY_RE = (uid) => new RegExp('^' + uid + '/[0-9a-f-]{36}$');
 const MAX_IMG = 5 * 1024 * 1024;
 
 function parseTx(body, uid) {
-  const { type, amount, category, note = '', date, image_key = null } = body || {};
+  const { type, amount, category, note = '', date, image_key = null, account_id = null } = body || {};
   if (type !== 'income' && type !== 'expense') return { error: 'ประเภทไม่ถูกต้อง' };
   const amt = Number(amount);
   if (!Number.isFinite(amt) || amt <= 0 || amt > 1e12) return { error: 'จำนวนเงินไม่ถูกต้อง' };
@@ -190,7 +220,19 @@ function parseTx(body, uid) {
   if (typeof note !== 'string' || note.length > 200) return { error: 'โน้ตยาวเกินไป' };
   if (!validDate(date)) return { error: 'วันที่ไม่ถูกต้อง' };
   if (image_key !== null && !(typeof image_key === 'string' && KEY_RE(uid).test(image_key))) return { error: 'รูปแนบไม่ถูกต้อง' };
-  return { value: [type, amt, category.trim(), note.trim(), date, image_key] };
+  let acct = null;
+  if (account_id !== null && account_id !== '' && account_id !== undefined) {
+    acct = Number(account_id);
+    if (!Number.isInteger(acct) || acct <= 0) return { error: 'บัญชีไม่ถูกต้อง' };
+  }
+  return { value: [type, amt, category.trim(), note.trim(), date, image_key, acct] };
+}
+
+async function ownsAccount(env, uid, ids) {
+  for (const id of new Set(ids.filter((x) => x !== null))) {
+    if (!(await env.DB.prepare('SELECT 1 FROM accounts WHERE id = ? AND user_id = ?').bind(id, uid).first())) return false;
+  }
+  return true;
 }
 
 function sniffImage(bytes) {
@@ -215,7 +257,11 @@ app.post('/api/slip/scan', async (c) => {
   const img = await readImage(c);
   if (img.error) return c.json({ error: img.error }, 400);
   try {
-    return c.json(await scanSlip(img.bytes, c.env));
+    if (!(await aiAllowed(c.env, c.get('uid')))) return c.json({ error: 'วันนี้ใช้ AI ครบโควตาแล้ว ลองใหม่พรุ่งนี้' }, 429);
+    const result = await scanSlip(img.bytes, c.env);
+    const learned = await learnCategory(c.env, c.get('uid'), result.note, 'expense');
+    if (learned && learned.count >= 2) { result.category = learned.category; result.learned = learned.count; }
+    return c.json(result);
   } catch (e) {
     return c.json({ error: e.message || 'อ่านสลิปไม่สำเร็จ' }, 422);
   }
@@ -258,7 +304,7 @@ const dropImage = (env, key) => (key ? env.UPLOADS.delete(key).catch(() => {}) :
 app.get('/api/transactions', async (c) => {
   const from = c.req.query('from');
   const to = c.req.query('to');
-  let sql = 'SELECT id, type, amount, category, note, date, image_key FROM transactions WHERE user_id = ?';
+  let sql = 'SELECT id, type, amount, category, note, date, image_key, account_id FROM transactions WHERE user_id = ?';
   const args = [c.get('uid')];
   if (from && validDate(from)) { sql += ' AND date >= ?'; args.push(from); }
   if (to && validDate(to)) { sql += ' AND date <= ?'; args.push(to); }
@@ -267,23 +313,39 @@ app.get('/api/transactions', async (c) => {
   return c.json({ transactions: results });
 });
 
+const INSERT_TX = 'INSERT INTO transactions (user_id, type, amount, category, note, date, image_key, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+
 app.post('/api/transactions', async (c) => {
-  const p = parseTx(await c.req.json().catch(() => null), c.get('uid'));
+  const uid = c.get('uid');
+  const p = parseTx(await c.req.json().catch(() => null), uid);
   if (p.error) return c.json({ error: p.error }, 400);
-  const r = await c.env.DB.prepare(
-    'INSERT INTO transactions (user_id, type, amount, category, note, date, image_key) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).bind(c.get('uid'), ...p.value).run();
+  if (!(await ownsAccount(c.env, uid, [p.value[6]]))) return c.json({ error: 'ไม่พบบัญชี' }, 400);
+  const r = await c.env.DB.prepare(INSERT_TX).bind(uid, ...p.value).run();
   return c.json({ id: r.meta.last_row_id }, 201);
+});
+
+// Several entries at once (natural-language entry); all-or-nothing
+app.post('/api/transactions/batch', async (c) => {
+  const uid = c.get('uid');
+  const { items } = (await c.req.json().catch(() => null)) || {};
+  if (!Array.isArray(items) || !items.length || items.length > 20) return c.json({ error: 'จำนวนรายการไม่ถูกต้อง (1-20)' }, 400);
+  const parsed = items.map((it) => parseTx({ ...it, image_key: null }, uid));
+  const bad = parsed.findIndex((p) => p.error);
+  if (bad >= 0) return c.json({ error: `รายการที่ ${bad + 1}: ${parsed[bad].error}` }, 400);
+  if (!(await ownsAccount(c.env, uid, parsed.map((p) => p.value[6])))) return c.json({ error: 'ไม่พบบัญชี' }, 400);
+  await c.env.DB.batch(parsed.map((p) => c.env.DB.prepare(INSERT_TX).bind(uid, ...p.value)));
+  return c.json({ count: parsed.length }, 201);
 });
 
 app.put('/api/transactions/:id', async (c) => {
   const uid = c.get('uid'), id = Number(c.req.param('id'));
   const p = parseTx(await c.req.json().catch(() => null), uid);
   if (p.error) return c.json({ error: p.error }, 400);
+  if (!(await ownsAccount(c.env, uid, [p.value[6]]))) return c.json({ error: 'ไม่พบบัญชี' }, 400);
   const old = await c.env.DB.prepare('SELECT image_key FROM transactions WHERE id=? AND user_id=?').bind(id, uid).first();
   if (!old) return c.json({ error: 'ไม่พบรายการ' }, 404);
   await c.env.DB.prepare(
-    'UPDATE transactions SET type=?, amount=?, category=?, note=?, date=?, image_key=? WHERE id=? AND user_id=?'
+    'UPDATE transactions SET type=?, amount=?, category=?, note=?, date=?, image_key=?, account_id=? WHERE id=? AND user_id=?'
   ).bind(...p.value, id, uid).run();
   if (old.image_key && old.image_key !== p.value[5]) await dropImage(c.env, old.image_key);
   return c.json({ ok: true });
@@ -298,40 +360,32 @@ app.delete('/api/transactions/:id', async (c) => {
   return c.json({ ok: true });
 });
 
+// Budgets per category, monthly or weekly (weeks run Monday-Sunday; the client sums the spending)
 app.get('/api/budgets', async (c) => {
-  const { results } = await c.env.DB.prepare('SELECT category, monthly_limit FROM budgets WHERE user_id = ?')
+  const { results } = await c.env.DB.prepare('SELECT category, period, limit_amount AS "limit", limit_amount AS monthly_limit FROM budgets WHERE user_id = ? ORDER BY period DESC, category')
     .bind(c.get('uid')).all();
   return c.json({ budgets: results });
 });
 
 app.put('/api/budgets', async (c) => {
-  const { category, monthly_limit } = (await c.req.json().catch(() => null)) || {};
-  const lim = Number(monthly_limit);
+  const body = (await c.req.json().catch(() => null)) || {};
+  const { category, period = 'month' } = body;
+  const lim = Number(body.limit ?? body.monthly_limit); // monthly_limit: name used by older app versions
   if (typeof category !== 'string' || !category.trim() || category.length > 60) return c.json({ error: 'หมวดหมู่ไม่ถูกต้อง' }, 400);
-  if (!Number.isFinite(lim) || lim < 0) return c.json({ error: 'วงเงินไม่ถูกต้อง' }, 400);
+  if (period !== 'month' && period !== 'week') return c.json({ error: 'ช่วงงบประมาณไม่ถูกต้อง' }, 400);
+  if (!Number.isFinite(lim) || lim < 0 || lim > 1e12) return c.json({ error: 'วงเงินไม่ถูกต้อง' }, 400);
   if (lim === 0) {
-    await c.env.DB.prepare('DELETE FROM budgets WHERE user_id=? AND category=?').bind(c.get('uid'), category.trim()).run();
+    await c.env.DB.prepare('DELETE FROM budgets WHERE user_id=? AND category=? AND period=?').bind(c.get('uid'), category.trim(), period).run();
   } else {
     await c.env.DB.prepare(
-      'INSERT INTO budgets (user_id, category, monthly_limit) VALUES (?, ?, ?) ON CONFLICT(user_id, category) DO UPDATE SET monthly_limit = excluded.monthly_limit'
-    ).bind(c.get('uid'), category.trim(), lim).run();
+      'INSERT INTO budgets (user_id, category, period, limit_amount) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, category, period) DO UPDATE SET limit_amount = excluded.limit_amount'
+    ).bind(c.get('uid'), category.trim(), period, lim).run();
   }
   return c.json({ ok: true });
 });
 
-// Savings goals: progress = (income - expense) since start_date, computed on the fly
-app.get('/api/goals', async (c) => {
-  const uid = c.get('uid');
-  const { results } = await c.env.DB.prepare(
-    `SELECT g.id, g.name, g.target, g.start_date,
-       COALESCE((SELECT SUM(CASE WHEN t.type='income' THEN t.amount
-                                  WHEN t.category LIKE '%ออม%' OR t.category LIKE '%ลงทุน%' OR t.category LIKE '%กองทุน%' OR t.category LIKE '%เงินเก็บ%' OR t.category LIKE '%ฉุกเฉิน%' THEN 0
-                                  ELSE -t.amount END)
-                 FROM transactions t WHERE t.user_id = g.user_id AND t.date >= g.start_date), 0) AS saved
-     FROM goals g WHERE g.user_id = ? ORDER BY g.id`
-  ).bind(uid).all();
-  return c.json({ goals: results });
-});
+// Savings goals
+app.get('/api/goals', async (c) => c.json({ goals: await goalsWithProgress(c.env, c.get('uid')) }));
 
 app.post('/api/goals', async (c) => {
   const { name, target, start_date } = (await c.req.json().catch(() => null)) || {};
@@ -348,6 +402,46 @@ app.delete('/api/goals/:id', async (c) => {
   const r = await c.env.DB.prepare('DELETE FROM goals WHERE id=? AND user_id=?')
     .bind(Number(c.req.param('id')), c.get('uid')).run();
   if (!r.meta.changes) return c.json({ error: 'ไม่พบเป้าหมาย' }, 404);
+  return c.json({ ok: true });
+});
+
+// ---------- privacy (PDPA): download everything, or erase everything ----------
+app.get('/api/privacy/export', async (c) => {
+  const uid = c.get('uid');
+  const all = (sql) => c.env.DB.prepare(sql).bind(uid).all().then((r) => r.results);
+  const user = await c.env.DB.prepare('SELECT id, username, created_at FROM users WHERE id = ?').bind(uid).first();
+  const data = {
+    exported_at: new Date().toISOString(),
+    user,
+    accounts: await all('SELECT id, name, type, currency, rate_to_thb, created_at FROM accounts WHERE user_id = ?'),
+    transactions: await all('SELECT id, type, amount, category, note, date, account_id, image_key, created_at FROM transactions WHERE user_id = ? ORDER BY date, id'),
+    budgets: await all('SELECT category, period, limit_amount FROM budgets WHERE user_id = ?'),
+    goals: await all('SELECT id, name, target, start_date, created_at FROM goals WHERE user_id = ?'),
+  };
+  c.header('Content-Disposition', 'attachment; filename="ben-my-data.json"');
+  return c.json(data);
+});
+
+app.post('/api/privacy/delete', async (c) => {
+  const uid = c.get('uid');
+  const { current_password, confirm } = (await c.req.json().catch(() => null)) || {};
+  if (confirm !== 'ลบข้อมูล') return c.json({ error: 'พิมพ์คำว่า "ลบข้อมูล" เพื่อยืนยัน' }, 400);
+  const v = await verifyCurrent(c, uid, current_password);
+  if (v.error) return c.json({ error: v.error }, v.status);
+  // photos first (R2), then every table
+  let cursor;
+  do {
+    const page = await c.env.UPLOADS.list({ prefix: `${uid}/`, cursor, limit: 500 });
+    if (page.objects.length) await c.env.UPLOADS.delete(page.objects.map((o) => o.key));
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  const del = (t) => c.env.DB.prepare(`DELETE FROM ${t} WHERE user_id = ?`).bind(uid);
+  await c.env.DB.batch([
+    del('transactions'), del('budgets'), del('goals'), del('accounts'), del('ai_usage'), del('sync'),
+    c.env.DB.prepare('DELETE FROM login_attempts WHERE username = ?').bind(v.user.username.toLowerCase()),
+    c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid),
+  ]);
+  deleteCookie(c, 'ben_session', { path: '/' });
   return c.json({ ok: true });
 });
 
