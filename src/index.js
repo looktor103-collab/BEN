@@ -200,5 +200,35 @@ app.put('/api/budgets', async (c) => {
   return c.json({ ok: true });
 });
 
+// Savings goals: progress = (income - expense) since start_date, computed on the fly
+app.get('/api/goals', async (c) => {
+  const uid = c.get('uid');
+  const { results } = await c.env.DB.prepare(
+    `SELECT g.id, g.name, g.target, g.start_date,
+       COALESCE((SELECT SUM(CASE WHEN t.type='income' THEN t.amount ELSE -t.amount END)
+                 FROM transactions t WHERE t.user_id = g.user_id AND t.date >= g.start_date), 0) AS saved
+     FROM goals g WHERE g.user_id = ? ORDER BY g.id`
+  ).bind(uid).all();
+  return c.json({ goals: results });
+});
+
+app.post('/api/goals', async (c) => {
+  const { name, target, start_date } = (await c.req.json().catch(() => null)) || {};
+  const t = Number(target);
+  if (typeof name !== 'string' || !name.trim() || name.length > 80) return c.json({ error: 'ชื่อเป้าหมายไม่ถูกต้อง' }, 400);
+  if (!Number.isFinite(t) || t <= 0 || t > 1e12) return c.json({ error: 'จำนวนเป้าหมายไม่ถูกต้อง' }, 400);
+  if (!validDate(start_date)) return c.json({ error: 'วันที่เริ่มไม่ถูกต้อง' }, 400);
+  const r = await c.env.DB.prepare('INSERT INTO goals (user_id, name, target, start_date) VALUES (?, ?, ?, ?)')
+    .bind(c.get('uid'), name.trim(), t, start_date).run();
+  return c.json({ id: r.meta.last_row_id }, 201);
+});
+
+app.delete('/api/goals/:id', async (c) => {
+  const r = await c.env.DB.prepare('DELETE FROM goals WHERE id=? AND user_id=?')
+    .bind(Number(c.req.param('id')), c.get('uid')).run();
+  if (!r.meta.changes) return c.json({ error: 'ไม่พบเป้าหมาย' }, 404);
+  return c.json({ ok: true });
+});
+
 app.notFound((c) => c.json({ error: 'not found' }, 404));
 export default app;

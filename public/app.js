@@ -56,7 +56,7 @@
   };
 
   // ---------- state ----------
-  let TX = [], BUDGETS = [], editingId = null;
+  let TX = [], BUDGETS = [], GOALS = [], editingId = null;
   const trend = new Chart($('trendChart'), {
     type: 'line',
     data: { labels: [], datasets: [
@@ -86,9 +86,11 @@
     const monthStart = ymd(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     // budgets always compare against the current month, so fetch from the earlier of the two
     const fetchFrom = from && from < monthStart ? from : from ? monthStart : undefined;
-    const [t, b] = await Promise.all([api('/transactions' + (fetchFrom ? '?from=' + fetchFrom : '')), api('/budgets')]);
+    const [t, b, g] = await Promise.all([api('/transactions' + (fetchFrom ? '?from=' + fetchFrom : '')), api('/budgets'), api('/goals')]);
     ALL = t.transactions;
     BUDGETS = b.budgets;
+    GOALS = g.goals;
+    $('lastUpdate').textContent = 'อัปเดตล่าสุด ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
     render();
   }
   let ALL = [];
@@ -122,6 +124,8 @@
     expChart.update();
 
     renderBudgets();
+    renderGoals();
+    renderNotifs();
     renderTable();
     const cats = new Set([...ALL.map((x) => x.category), ...BUDGETS.map((b) => b.category)]);
     const dl = $('catList');
@@ -179,6 +183,96 @@
     });
   }
 
+  function renderGoals() {
+    const root = $('goalList');
+    root.replaceChildren();
+    if (!GOALS.length) { root.append(Object.assign(document.createElement('div'), { className: 'hint', textContent: 'ยังไม่มีเป้าหมาย' })); return; }
+    GOALS.forEach((g) => {
+      const saved = Math.max(g.saved, 0), pct = Math.min((saved / g.target) * 100, 100);
+      const wrap = document.createElement('div');
+      wrap.className = 'goal' + (saved >= g.target ? ' done' : '');
+      const head = document.createElement('div');
+      head.className = 'goal-head';
+      const l = document.createElement('span');
+      l.textContent = (saved >= g.target ? '✅ ' : '') + g.name;
+      const r = document.createElement('span');
+      r.textContent = `${fmtTHB(saved)} / ${fmtTHB(g.target)} (${pct.toFixed(0)}%)`;
+      const del = Object.assign(document.createElement('button'), { className: 'row-btn', textContent: '🗑', title: 'ลบเป้าหมาย' });
+      del.onclick = async () => {
+        if (!confirm(`ลบเป้าหมาย "${g.name}"?`)) return;
+        await api('/goals/' + g.id, { method: 'DELETE' }).catch((e) => alert(e.message));
+        load();
+      };
+      head.append(l, r, del);
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      const fill = document.createElement('i');
+      fill.style.width = pct + '%';
+      bar.append(fill);
+      wrap.append(head, bar);
+      root.append(wrap);
+    });
+  }
+
+  // ---------- notifications (budget alerts + goal progress) ----------
+  function renderNotifs() {
+    const items = [];
+    const monthStart = ymd(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    const spent = {};
+    ALL.filter((x) => x.type === 'expense' && x.date >= monthStart).forEach((x) => (spent[x.category] = (spent[x.category] || 0) + x.amount));
+    BUDGETS.forEach((b) => {
+      const pct = ((spent[b.category] || 0) / b.monthly_limit) * 100;
+      if (pct >= 100) items.push({ cls: 'over', text: `🚨 หมวด "${b.category}" ใช้เกินงบแล้ว (${pct.toFixed(0)}%)` });
+      else if (pct >= 80) items.push({ cls: 'warn', text: `⚠️ หมวด "${b.category}" ใช้ไปแล้ว ${pct.toFixed(0)}% ของงบ` });
+    });
+    GOALS.forEach((g) => { if (g.saved >= g.target) items.push({ cls: 'ok', text: `🎉 ถึงเป้าหมาย "${g.name}" แล้ว` }); });
+    const badge = $('bellCount');
+    badge.textContent = items.length;
+    show(badge, items.length > 0);
+    const panel = $('notifPanel');
+    panel.replaceChildren();
+    if (!items.length) panel.append(Object.assign(document.createElement('div'), { className: 'empty', textContent: 'ไม่มีการแจ้งเตือน' }));
+    items.forEach((i) => panel.append(Object.assign(document.createElement('div'), { className: 'item ' + i.cls, textContent: i.text })));
+  }
+  $('bellBtn').onclick = (e) => { e.stopPropagation(); $('notifPanel').hidden = !$('notifPanel').hidden; };
+  document.addEventListener('click', (e) => { if (!$('notifPanel').contains(e.target)) $('notifPanel').hidden = true; });
+
+  $('goalForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await api('/goals', { method: 'POST', body: { name: $('goalName').value, target: $('goalTarget').value, start_date: $('goalStart').value } });
+      $('goalName').value = $('goalTarget').value = '';
+      load();
+    } catch (err) { alert(err.message); }
+  });
+  $('goalStart').value = ymd(new Date());
+
+  // ---------- theme ----------
+  function applyTheme(t) {
+    document.documentElement.dataset.theme = t;
+    $('themeBtn').textContent = t === 'light' ? '☀️' : '🌙';
+    document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f4f6fa' : '#0e1116';
+    const muted = t === 'light' ? '#667085' : '#8b95a7', grid = t === 'light' ? 'rgba(0,0,0,.08)' : 'rgba(255,255,255,.06)';
+    trend.options.scales.x.ticks.color = trend.options.scales.y.ticks.color = muted;
+    trend.options.scales.x.grid.color = trend.options.scales.y.grid.color = grid;
+    trend.options.plugins.legend.labels.color = expChart.options.plugins.legend.labels.color = muted;
+    trend.update(); expChart.update();
+  }
+  let theme = 'dark';
+  try { theme = localStorage.getItem('ben_theme') || 'dark'; } catch {}
+  $('themeBtn').onclick = () => {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('ben_theme', theme); } catch {}
+    applyTheme(theme);
+  };
+  applyTheme(theme);
+
+  // ---------- mobile drawer ----------
+  const setMenu = (open) => { $('drawer').classList.toggle('open', open); show($('scrim'), open); };
+  $('menuBtn').onclick = () => setMenu(true);
+  $('closeMenu').onclick = $('scrim').onclick = () => setMenu(false);
+  $('fabBtn').onclick = () => openDialog(null);
+
   // ---------- transaction dialog ----------
   const dlg = $('txDialog');
   function openDialog(x) {
@@ -192,7 +286,7 @@
     show($('txError'), false);
     dlg.showModal();
   }
-  $('addBtn').onclick = () => openDialog(null);
+  $('addBtn').onclick = () => { setMenu(false); openDialog(null); };
   $('txCancel').onclick = () => dlg.close();
   $('txForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -216,7 +310,7 @@
     } catch (err) { alert(err.message); }
   });
 
-  $('period').addEventListener('change', load);
+  $('period').addEventListener('change', () => { setMenu(false); load(); });
 
   $('exportBtn').onclick = () => {
     const esc = (s) => {
@@ -251,4 +345,8 @@
     }
   }
   boot();
+  setInterval(() => {
+    if (document.hidden || dlg.open || $('appView').hidden) return;
+    load().catch(() => {});
+  }, 30000);
 })();

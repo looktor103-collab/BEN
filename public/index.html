@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0e1116" />
 <title>Ben · การเงินส่วนบุคคล</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -44,19 +45,31 @@
         <div class="sub">รายรับ รายจ่าย และงบประมาณของคุณ</div>
       </div>
       <div class="toolbar">
-        <select id="period">
-          <option value="month" selected>เดือนนี้</option>
-          <option value="30">30 วันล่าสุด</option>
-          <option value="90">3 เดือนล่าสุด</option>
-          <option value="year">ปีนี้</option>
-          <option value="all">ทั้งหมด</option>
-        </select>
-        <button class="btn-sm primary" id="addBtn">+ เพิ่มรายการ</button>
-        <button class="btn-sm" id="exportBtn">ส่งออก CSV</button>
-        <span class="muted" id="userName"></span>
-        <button class="btn-sm" id="signOutBtn">ออกจากระบบ</button>
+        <div class="bell-wrap">
+          <button class="icon-btn" id="bellBtn" aria-label="การแจ้งเตือน">🔔<span class="badge" id="bellCount" hidden></span></button>
+          <div class="notif" id="notifPanel" hidden></div>
+        </div>
+        <button class="icon-btn" id="themeBtn" aria-label="สลับโหมดมืด/สว่าง">🌙</button>
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="เมนู">≡</button>
       </div>
     </div>
+
+    <div class="scrim" id="scrim" hidden></div>
+    <aside class="drawer" id="drawer">
+      <div class="drawer-head"><b id="userName"></b><button class="icon-btn menu-btn" id="closeMenu" aria-label="ปิดเมนู">✕</button></div>
+      <label class="muted" for="period">ช่วงเวลา</label>
+      <select id="period">
+        <option value="month" selected>เดือนนี้</option>
+        <option value="30">30 วันล่าสุด</option>
+        <option value="90">3 เดือนล่าสุด</option>
+        <option value="year">ปีนี้</option>
+        <option value="all">ทั้งหมด</option>
+      </select>
+      <button class="btn-sm primary" id="addBtn">+ เพิ่มรายการ</button>
+      <button class="btn-sm" id="exportBtn">ส่งออก CSV</button>
+      <span class="muted live" id="lastUpdate"></span>
+      <button class="btn-sm" id="signOutBtn">ออกจากระบบ</button>
+    </aside>
 
     <div class="kpis">
       <div class="kpi" style="--bar:var(--income)"><div class="label">รายรับ</div><div class="value" id="kIncome">–</div></div>
@@ -71,6 +84,15 @@
       <div class="card"><h2>รายจ่ายตามหมวดหมู่</h2><div class="hint">สัดส่วนในช่วงที่เลือก</div>
         <div class="chart-wrap sm"><canvas id="expenseChart"></canvas></div></div>
     </div>
+
+    <div class="card goals-card"><h2>🎯 เป้าหมายการออม</h2><div class="hint">ความคืบหน้า = รายรับ − รายจ่าย นับตั้งแต่วันที่เริ่ม (อัปเดตอัตโนมัติ)</div>
+      <div id="goalList"></div>
+      <form id="goalForm" class="inline-form">
+        <input id="goalName" placeholder="ชื่อเป้าหมาย เช่น กองทุนฉุกเฉิน" required maxlength="80" />
+        <input id="goalTarget" type="number" min="1" step="1" placeholder="เป้าหมาย (บาท)" required />
+        <input id="goalStart" type="date" required />
+        <button class="btn-sm primary" type="submit">เพิ่มเป้าหมาย</button>
+      </form></div>
 
     <div class="grid3">
       <div class="card"><h2>งบประมาณรายเดือน</h2><div class="hint">เทียบรายจ่าย<b>เดือนนี้</b>กับวงเงินที่ตั้งไว้</div>
@@ -87,6 +109,7 @@
     </div>
   </div>
 
+  <button class="fab" id="fabBtn" aria-label="เพิ่มรายการ">+</button>
   <datalist id="catList"></datalist>
 
   <dialog id="txDialog">

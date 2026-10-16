@@ -27,7 +27,7 @@ input:focus,select:focus{border-color:var(--accent)}
 .err{background:rgba(248,113,113,.1);color:var(--expense);border-radius:10px;padding:9px 12px;font-size:12.5px;margin-bottom:14px}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 h1{font-size:20px;font-weight:700}
-.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}
+.toolbar{display:flex;gap:8px;align-items:center;font-size:13px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;position:relative;overflow:hidden}
 .kpi::after{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--bar,var(--accent))}
@@ -63,3 +63,60 @@ dialog h2{font-size:16px;margin-bottom:14px}
 .seg{display:flex;gap:16px;margin-bottom:14px;font-size:14px}
 .seg input{padding:0;margin-right:6px}
 .dialog-actions{display:flex;justify-content:flex-end;gap:8px}
+
+/* ---------- light theme ---------- */
+:root[data-theme="light"]{
+  --bg:#f4f6fa;--panel:#ffffff;--panel2:#eef1f6;--line:rgba(0,0,0,.09);--text:#1b2230;--muted:#667085;
+  --income:#0f9f6e;--expense:#e0443e;--accent:#2f6fe4;--warn:#d98a00;
+}
+:root[data-theme="light"] .btn,:root[data-theme="light"] .btn-sm.primary{color:#fff}
+:root[data-theme="light"] dialog::backdrop{background:rgba(0,0,0,.35)}
+
+/* ---------- header / icon buttons / notifications ---------- */
+.icon-btn{position:relative;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;min-width:44px;min-height:44px;font-size:18px;cursor:pointer}
+.menu-btn{display:none;font-size:22px}
+.badge{position:absolute;top:-5px;right:-5px;background:var(--expense);color:#fff;border-radius:999px;font-size:11px;padding:1px 6px;font-weight:700}
+.bell-wrap{position:relative}
+.notif{position:absolute;right:0;top:calc(100% + 8px);width:min(320px,86vw);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;z-index:40;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.notif .item{padding:10px;border-radius:10px;font-size:13px;line-height:1.4}
+.notif .item+.item{margin-top:4px}
+.notif .item.over{background:rgba(248,113,113,.12)}
+.notif .item.warn{background:rgba(251,191,36,.12)}
+.notif .item.ok{background:rgba(52,211,153,.12)}
+.notif .empty{padding:12px;color:var(--muted);font-size:13px;text-align:center}
+
+/* ---------- drawer: inline on desktop, slide-in on mobile ---------- */
+.drawer{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:-4px 0 16px;font-size:13px}
+.drawer-head,.drawer>label{display:none}
+.scrim{display:none}
+.live{font-size:12px}
+.goals-card{margin-bottom:14px}
+.goal{margin-top:14px}
+.goal-head{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:5px}
+.goal .bar>i{background:var(--accent)}
+.goal.done .bar>i{background:var(--income)}
+.fab{display:none}
+
+@media(max-width:700px){
+  .menu-btn{display:inline-block}
+  .topbar{flex-wrap:nowrap}
+  .topbar h1{font-size:17px}
+  .topbar .sub{display:none}
+  .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50}
+  .scrim[hidden]{display:none}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(300px,84vw);z-index:60;margin:0;background:var(--panel);border-left:1px solid var(--line);padding:18px;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:12px;transform:translateX(105%);transition:transform .25s ease;overflow-y:auto}
+  .drawer.open{transform:none}
+  .drawer-head{display:flex;justify-content:space-between;align-items:center}
+  .drawer>label{display:block}
+  .drawer select,.drawer .btn-sm{width:100%;min-height:46px;font-size:15px}
+  .kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .kpi{padding:14px}.kpi .value{font-size:19px}
+  .chart-wrap{height:230px}.chart-wrap.sm{height:210px}
+  .card{padding:14px}
+  .btn-sm,input,select{min-height:44px}
+  .inline-form input{flex:1 1 100%}
+  .inline-form .btn-sm{flex:1 1 100%}
+  .row-btn{min-width:40px;min-height:40px;font-size:17px}
+  .fab{display:flex;align-items:center;justify-content:center;position:fixed;right:18px;bottom:18px;width:56px;height:56px;border-radius:50%;border:none;background:var(--accent);color:#0b1220;font-size:30px;box-shadow:0 8px 20px rgba(0,0,0,.4);z-index:30;cursor:pointer}
+  body{padding-bottom:90px}
+}
