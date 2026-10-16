@@ -1,5 +1,5 @@
 // Offline shell for the PWA. API calls and uploaded images are never cached (private data).
-const CACHE = 'ben-shell-v1';
+const CACHE = 'ben-shell-v2';
 const SHELL = ['/', '/style.css', '/app.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {

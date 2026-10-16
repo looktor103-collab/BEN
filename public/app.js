@@ -415,8 +415,6 @@
       show($('loginView'), false);
       show($('appView'), true);
       $('userName').textContent = me.user.username;
-      const hr = new Date().getHours();
-      $('greeting').textContent = `${hr < 12 ? 'อรุณสวัสดิ์' : hr < 18 ? 'สวัสดียามบ่าย' : 'สวัสดียามเย็น'} ${me.user.username} 👋`;
       await load();
       if (new URLSearchParams(location.search).get('add')) { history.replaceState(null, '', '/'); openDialog(null); }
     } catch (err) {
@@ -482,9 +480,6 @@
     try {
       const r = await api('/account/username', { method: 'POST', body: { current_password: $('acctUserPw').value, new_username: $('acctNewUser').value.trim() } });
       $('userName').textContent = r.username;
-      const g = $('greeting').textContent.split(' ');
-      g[g.length - 2] = r.username;
-      $('greeting').textContent = g.join(' ');
       $('acctUserPw').value = '';
       setMsg('userErr', '✅ เปลี่ยน username แล้ว ครั้งหน้าเข้าสู่ระบบด้วยชื่อใหม่', true);
     } catch (err) { setMsg('userErr', err.message); }

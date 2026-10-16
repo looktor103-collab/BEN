@@ -53,6 +53,9 @@ input:focus,select:focus{border-color:var(--accent);background:var(--panel)}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
 h1{font-size:23px;font-weight:800;letter-spacing:-.01em}
 .toolbar{display:flex;gap:8px;align-items:center}
+.hello{display:flex;align-items:center;gap:14px;min-width:0}
+.avatar{flex:none;width:58px;height:58px;border-radius:20px;object-fit:cover;box-shadow:var(--shadow)}
+.brand-img{display:block;width:96px;height:96px;margin:0 auto 12px;border-radius:30px;object-fit:cover;box-shadow:var(--shadow)}
 .icon-btn{position:relative;background:var(--panel);color:var(--text);border:none;border-radius:16px;min-width:46px;min-height:46px;font-size:19px;cursor:pointer;box-shadow:var(--shadow)}
 .icon-btn:active{transform:scale(.95)}
 .menu-btn{display:none;font-size:20px}
@@ -137,8 +140,9 @@ dialog h2{font-size:17px;margin-bottom:14px;font-weight:800}
 @media(max-width:700px){
   body{padding-left:14px;padding-right:14px;padding-bottom:100px}
   h1{font-size:20px}
+  .avatar{width:48px;height:48px;border-radius:16px}
+  .topbar .sub{display:block;font-size:12px}
   .menu-btn{display:inline-block}
-  .topbar .sub{display:none}
   .scrim{display:block;position:fixed;inset:0;background:rgba(30,20,50,.5);z-index:50;backdrop-filter:blur(2px)}
   .scrim[hidden]{display:none}
   .drawer{position:fixed;top:0;right:0;bottom:0;width:min(310px,86vw);z-index:60;margin:0;background:var(--panel);border-radius:28px 0 0 28px;padding:max(18px,env(safe-area-inset-top)) 18px 18px;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:12px;transform:translateX(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);overflow-y:auto;box-shadow:-10px 0 40px rgba(40,20,80,.25)}
