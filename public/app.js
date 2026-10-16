@@ -3,9 +3,14 @@
   const show = (el, on) => (el.hidden = !on);
   const fmtTHB = (n) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(n);
   const fmtShort = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(0) + 'K' : '' + n);
-  const EMOJI_RULES = [[/อาหาร|กิน|ข้าว|ร้าน/, '🍜'], [/เครื่องดื่ม|กาแฟ|ชา|น้ำ(?!มัน|ไฟ)/, '🧋'], [/เดินทาง|รถ|น้ำมัน|แท็กซี่|บีทีเอส|เรือ/, '🚌'], [/ช้อป|เสื้อ|ของใช้/, '🛍️'], [/ที่อยู่|บ้าน|เช่า|ห้อง|คอนโด/, '🏠'], [/บิล|สาธารณูปโภค|ไฟ|เน็ต|โทรศัพท์/, '🧾'], [/สุขภาพ|ยา|หมอ|โรงพยาบาล|ฟิตเนส/, '💊'], [/บันเทิง|หนัง|เกม|คอนเสิร์ต/, '🎬'], [/การศึกษา|เรียน|หนังสือ|คอร์ส/, '📚'], [/ท่องเที่ยว|เที่ยว|โรงแรม|ตั๋วเครื่องบิน/, '✈️'], [/โอน/, '💌'], [/ออม|ลงทุน|หุ้น|กองทุน/, '🐷'], [/เงินเดือน|โบนัส/, '💰'], [/ฟรีแลนซ์|รายได้|ขาย/, '🤑'], [/ของขวัญ|บริจาค/, '🎁'], [/สัตว์|แมว|หมา/, '🐱']];
+  const EMOJI_RULES = [[/อาหาร|กิน|ข้าว|ร้าน/, '🍜'], [/เครื่องดื่ม|กาแฟ|ชา|น้ำ(?!มัน|ไฟ)/, '🧋'], [/เดินทาง|รถ|น้ำมัน|แท็กซี่|บีทีเอส|เรือ/, '🚌'], [/ช้อป|เสื้อ|ของใช้/, '🛍️'], [/ที่อยู่|บ้าน|เช่า|ห้อง|คอนโด/, '🏠'], [/บิล|สาธารณูปโภค|ไฟ|เน็ต|โทรศัพท์/, '🧾'], [/สุขภาพ|ยา|หมอ|โรงพยาบาล|ฟิตเนส/, '💊'], [/บันเทิง|หนัง|เกม|คอนเสิร์ต/, '🎬'], [/การศึกษา|เรียน|หนังสือ|คอร์ส/, '📚'], [/ท่องเที่ยว|เที่ยว|โรงแรม|ตั๋วเครื่องบิน/, '✈️'], [/โอน/, '💌'], [/ออม|ลงทุน|หุ้น|กองทุน|เงินเก็บ|ฉุกเฉิน/, '🐷'], [/เงินเดือน|โบนัส/, '💰'], [/ฟรีแลนซ์|รายได้|ขาย/, '🤑'], [/ของขวัญ|บริจาค/, '🎁'], [/สัตว์|แมว|หมา/, '🐱']];
   const emojiFor = (cat, type) => { for (const [re, e] of EMOJI_RULES) if (re.test(cat)) return e; return type === 'income' ? '💸' : '🪙'; };
-  const DEFAULT_CATS = ['อาหาร', 'เครื่องดื่ม', 'เดินทาง', 'ช้อปปิ้ง', 'ที่อยู่อาศัย', 'บิล/สาธารณูปโภค', 'สุขภาพ', 'บันเทิง', 'การศึกษา', 'โอนเงิน', 'ท่องเที่ยว', 'ออม/ลงทุน', 'เงินเดือน', 'อื่นๆ'];
+  const DEFAULT_CATS = ['อาหาร', 'เครื่องดื่ม', 'เดินทาง', 'ช้อปปิ้ง', 'ที่อยู่อาศัย', 'บิล/สาธารณูปโภค', 'สุขภาพ', 'บันเทิง', 'การศึกษา', 'โอนเงิน', 'ท่องเที่ยว', 'ออมเงิน', 'เงินฉุกเฉิน', 'กองทุน/ลงทุน', 'เงินเก็บเที่ยว', 'เงินเดือน', 'อื่นๆ'];
+  const SAVING_CATS = ['ออมเงิน', 'เงินฉุกเฉิน', 'กองทุน/ลงทุน', 'เงินเก็บเที่ยว'];
+  const SAVING_RE = /ออม|ลงทุน|กองทุน|เงินเก็บ|ฉุกเฉิน/; // keep in sync with the goals SQL in src/index.js
+  const isSaving = (x) => x.type === 'expense' && SAVING_RE.test(x.category);
+  const SPEND_CHIPS = ['อาหาร', 'เครื่องดื่ม', 'เดินทาง', 'ช้อปปิ้ง', 'ที่อยู่อาศัย', 'บิล/สาธารณูปโภค', 'สุขภาพ', 'บันเทิง', 'การศึกษา', 'ท่องเที่ยว', 'โอนเงิน', 'อื่นๆ'];
+  const INCOME_CHIPS = ['เงินเดือน', 'โบนัส', 'ฟรีแลนซ์', 'ขายของ', 'ดอกเบี้ย/ปันผล', 'อื่นๆ'];
   const PALETTE = ['#ff8fab', '#ffc46b', '#8b7cf6', '#5ed6a5', '#7cc4ff', '#f9a8d4', '#a3e635', '#fb923c', '#c4b5fd', '#94a3b8'];
   const _OLD_PALETTE = ['#f87171', '#fbbf24', '#60a5fa', '#34d399', '#a78bfa', '#f472b6', '#22d3ee', '#94a3b8', '#fb923c', '#a3e635'];
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -65,7 +70,8 @@
     type: 'line',
     data: { labels: [], datasets: [
       { label: 'รายรับ', data: [], borderColor: '#34c78f', backgroundColor: 'rgba(52,199,143,.14)', fill: true, tension: .35, pointRadius: 0, borderWidth: 2 },
-      { label: 'รายจ่าย', data: [], borderColor: '#ff7a96', backgroundColor: 'rgba(255,122,150,.12)', fill: true, tension: .35, pointRadius: 0, borderWidth: 2 }] },
+      { label: 'รายจ่าย', data: [], borderColor: '#ff7a96', backgroundColor: 'rgba(255,122,150,.12)', fill: true, tension: .35, pointRadius: 0, borderWidth: 2 },
+      { label: 'ออม', data: [], borderColor: '#8b7cf6', backgroundColor: 'rgba(139,124,246,.10)', fill: false, tension: .35, pointRadius: 0, borderWidth: 2, borderDash: [5, 4] }] },
     options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
       plugins: { legend: { labels: { usePointStyle: true, boxWidth: 8, color: '#8b95a7' } }, tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtTHB(c.parsed.y) } } },
       scales: { x: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#8b95a7' } }, y: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { color: '#8b95a7', callback: fmtShort } } } },
@@ -102,27 +108,29 @@
   function render() {
     const { from } = range();
     TX = from ? ALL.filter((x) => x.date >= from) : ALL;
-    let inc = 0, exp = 0;
-    TX.forEach((x) => (x.type === 'income' ? (inc += x.amount) : (exp += x.amount)));
-    const net = inc - exp;
+    let inc = 0, exp = 0, saved = 0; // exp = spending only; saved = money moved into savings categories
+    TX.forEach((x) => (x.type === 'income' ? (inc += x.amount) : isSaving(x) ? (saved += x.amount) : (exp += x.amount)));
+    const net = inc - exp - saved; // cash left over
     $('kIncome').textContent = fmtTHB(inc);
     $('kExpense').textContent = fmtTHB(exp);
+    $('kSaved').textContent = fmtTHB(saved);
     const kn = $('kNet');
     kn.textContent = (net >= 0 ? '+' : '−') + fmtTHB(Math.abs(net));
     kn.style.color = net >= 0 ? 'var(--income)' : 'var(--expense)';
-    $('kRate').textContent = inc ? ((net / inc) * 100).toFixed(1) + '%' : '–';
-    $('kCount').textContent = `จาก ${TX.length.toLocaleString('th-TH')} รายการ`;
+    // saving rate = share of income not spent (cash left + money put into savings)
+    $('kCount').textContent = inc ? `อัตราการออม ${(((inc - exp) / inc) * 100).toFixed(1)}%` : `${TX.length.toLocaleString('th-TH')} รายการ`;
 
     const byDay = {};
-    [...TX].reverse().forEach((x) => { (byDay[x.date] ??= { i: 0, e: 0 }); x.type === 'income' ? (byDay[x.date].i += x.amount) : (byDay[x.date].e += x.amount); });
+    [...TX].reverse().forEach((x) => { (byDay[x.date] ??= { i: 0, e: 0, s: 0 }); x.type === 'income' ? (byDay[x.date].i += x.amount) : isSaving(x) ? (byDay[x.date].s += x.amount) : (byDay[x.date].e += x.amount); });
     const days = Object.keys(byDay);
     trend.data.labels = days.map((d) => new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
     trend.data.datasets[0].data = days.map((d) => byDay[d].i);
     trend.data.datasets[1].data = days.map((d) => byDay[d].e);
+    trend.data.datasets[2].data = days.map((d) => byDay[d].s);
     trend.update();
 
     const ex = {};
-    TX.filter((x) => x.type === 'expense').forEach((x) => (ex[x.category] = (ex[x.category] || 0) + x.amount));
+    TX.filter((x) => x.type === 'expense' && !isSaving(x)).forEach((x) => (ex[x.category] = (ex[x.category] || 0) + x.amount));
     expChart.data.labels = Object.keys(ex);
     expChart.data.datasets[0].data = Object.values(ex);
     expChart.update();
@@ -169,13 +177,13 @@
     if (!TX.length) { root.append(Object.assign(document.createElement('div'), { className: 'empty-state', textContent: '🌱 ยังไม่มีรายการในช่วงนี้ กด ＋ เพื่อเริ่มจดได้เลย' })); return; }
     TX.slice(0, 100).forEach((x) => {
       const row = document.createElement('div');
-      row.className = 'tx ' + x.type;
+      row.className = 'tx ' + (isSaving(x) ? 'saving' : x.type);
       const bubble = Object.assign(document.createElement('div'), { className: 'bubble', textContent: emojiFor(x.category, x.type) });
       const info = document.createElement('div');
       info.className = 'info';
       info.append(Object.assign(document.createElement('div'), { className: 'title', textContent: x.category }),
         Object.assign(document.createElement('div'), { className: 'meta', textContent: thDate(x.date) + (x.note ? ' · ' + x.note : '') }));
-      const amt = Object.assign(document.createElement('div'), { className: 'amt', textContent: (x.type === 'income' ? '+' : '−') + fmtTHB(x.amount) });
+      const amt = Object.assign(document.createElement('div'), { className: 'amt', textContent: (x.type === 'income' ? '+' : isSaving(x) ? '' : '−') + fmtTHB(x.amount) });
       const acts = document.createElement('div');
       acts.className = 'acts';
       if (x.image_key) {
@@ -194,6 +202,37 @@
       acts.append(edit, del);
       row.append(bubble, info, amt, acts);
       root.append(row);
+    });
+  }
+
+  function renderGoals() {
+    const root = $('goalList');
+    root.replaceChildren();
+    if (!GOALS.length) { root.append(Object.assign(document.createElement('div'), { className: 'hint', textContent: 'ยังไม่มีเป้าหมาย' })); return; }
+    GOALS.forEach((g) => {
+      const saved = Math.max(g.saved, 0), pct = Math.min((saved / g.target) * 100, 100);
+      const wrap = document.createElement('div');
+      wrap.className = 'goal' + (saved >= g.target ? ' done' : '');
+      const head = document.createElement('div');
+      head.className = 'goal-head';
+      const l = document.createElement('span');
+      l.textContent = (saved >= g.target ? '🎉 ' : '🎯 ') + g.name;
+      const r = document.createElement('span');
+      r.textContent = `${fmtTHB(saved)} / ${fmtTHB(g.target)} (${pct.toFixed(0)}%)`;
+      const del = Object.assign(document.createElement('button'), { className: 'row-btn', textContent: '🗑', title: 'ลบเป้าหมาย' });
+      del.onclick = async () => {
+        if (!confirm(`ลบเป้าหมาย "${g.name}"?`)) return;
+        await api('/goals/' + g.id, { method: 'DELETE' }).catch((e) => alert(e.message));
+        load();
+      };
+      head.append(l, r, del);
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      const fill = document.createElement('i');
+      fill.style.width = pct + '%';
+      bar.append(fill);
+      wrap.append(head, bar);
+      root.append(wrap);
     });
   }
 
@@ -312,6 +351,7 @@
       if (scan.category) $('txCat').value = scan.category;
       if (scan.date) $('txDate').value = scan.date;
       if (scan.note) $('txNote').value = scan.note;
+      renderChips();
       const missing = [!scan.amount && 'จำนวนเงิน', !scan.date && 'วันที่'].filter(Boolean);
       scanMsg(missing.length ? `🧐 อ่านได้บางส่วน ช่วยกรอก${missing.join(' และ ')}เพิ่มนะ` : '✅ อ่านสลิปแล้ว ตรวจความถูกต้องก่อนบันทึกนะ');
     } catch (err) {
@@ -340,6 +380,23 @@
   $('lightboxClose').onclick = () => $('lightbox').close();
   $('lightbox').addEventListener('click', (e) => { if (e.target === $('lightbox')) $('lightbox').close(); });
 
+  // ---------- category chips (tap to pick; savings first for expenses) ----------
+  function renderChips() {
+    const isIncome = document.querySelector('input[name=type]:checked').value === 'income';
+    const names = isIncome ? INCOME_CHIPS : [...SAVING_CATS, ...SPEND_CHIPS];
+    const cur = $('txCat').value.trim();
+    $('catChips').replaceChildren(...names.map((n) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (!isIncome && SAVING_CATS.includes(n) ? ' saving' : '') + (n === cur ? ' on' : '');
+      b.textContent = emojiFor(n, isIncome ? 'income' : 'expense') + ' ' + n;
+      b.onclick = () => { $('txCat').value = n; renderChips(); };
+      return b;
+    }));
+  }
+  document.querySelectorAll('input[name=type]').forEach((r) => r.addEventListener('change', renderChips));
+  $('txCat').addEventListener('input', renderChips);
+
   // ---------- transaction dialog ----------
   const dlg = $('txDialog');
   function openDialog(x) {
@@ -354,6 +411,7 @@
     originalKey = x ? x.image_key || null : null;
     setImage(originalKey);
     scanMsg('');
+    renderChips();
     show($('txError'), false);
     dlg.showModal();
   }
@@ -429,17 +487,18 @@
     const { from } = range();
     const label = $('period').selectedOptions[0].textContent.replace(/^\S+\s/, '');
     const list = [...TX];
-    let inc = 0, exp = 0;
-    list.forEach((x) => (x.type === 'income' ? (inc += x.amount) : (exp += x.amount)));
-    const net = inc - exp;
+    let inc = 0, exp = 0, saved = 0;
+    list.forEach((x) => (x.type === 'income' ? (inc += x.amount) : isSaving(x) ? (saved += x.amount) : (exp += x.amount)));
+    const net = inc - exp - saved;
     const sum = (l, v, cls) => el('div', {}, el('small', { textContent: l }), el('b', { textContent: v, className: cls || '' }));
 
-    const byCat = {};
-    list.filter((x) => x.type === 'expense').forEach((x) => (byCat[x.category] = (byCat[x.category] || 0) + x.amount));
+    const byCat = {}, bySave = {};
+    list.filter((x) => x.type === 'expense').forEach((x) => { const m = isSaving(x) ? bySave : byCat; m[x.category] = (m[x.category] || 0) + x.amount; });
     const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+    const saves = Object.entries(bySave).sort((a, b) => b[1] - a[1]);
 
-    const catTable = el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'หมวดหมู่' }), el('th', { className: 'num', textContent: 'จำนวน' }), el('th', { className: 'num', textContent: 'สัดส่วน' }))),
-      el('tbody', {}, ...cats.map(([c, v]) => el('tr', {}, el('td', { textContent: emojiFor(c, 'expense') + ' ' + c }), el('td', { className: 'num', textContent: fmtTHB(v) }), el('td', { className: 'num', textContent: exp ? ((v / exp) * 100).toFixed(1) + '%' : '–' })))));
+    const catTbl = (entries, total) => el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'หมวดหมู่' }), el('th', { className: 'num', textContent: 'จำนวน' }), el('th', { className: 'num', textContent: 'สัดส่วน' }))),
+      el('tbody', {}, ...entries.map(([c, v]) => el('tr', {}, el('td', { textContent: emojiFor(c, 'expense') + ' ' + c }), el('td', { className: 'num', textContent: fmtTHB(v) }), el('td', { className: 'num', textContent: total ? ((v / total) * 100).toFixed(1) + '%' : '–' })))));
 
     const txTable = el('table', {}, el('thead', {}, el('tr', {}, ...['วันที่', 'หมวดหมู่', 'โน้ต'].map((t) => el('th', { textContent: t })), el('th', { className: 'num', textContent: 'จำนวน' }))),
       el('tbody', {}, ...list.map((x) => el('tr', {}, el('td', { textContent: thDate(x.date) }), el('td', { textContent: x.category }), el('td', { textContent: x.note }),
@@ -449,8 +508,10 @@
       el('h1', { textContent: '🪙 Ben · รายงานการเงิน' }),
       el('div', { className: 'r-sub', textContent: `${label}${from ? ' (ตั้งแต่ ' + thLong(new Date(from + 'T00:00:00')) + ')' : ''} · สร้างเมื่อ ${thLong(new Date())} · ${$('userName').textContent}` }),
       el('div', { className: 'r-sum' }, sum('รายรับ', fmtTHB(inc), 'in'), sum('รายจ่าย', fmtTHB(exp), 'out'),
-        sum('คงเหลือสุทธิ', (net >= 0 ? '+' : '−') + fmtTHB(Math.abs(net)), net >= 0 ? 'in' : 'out'), sum('อัตราการออม', inc ? ((net / inc) * 100).toFixed(1) + '%' : '–')),
-      ...(cats.length ? [el('h2', { textContent: 'รายจ่ายตามหมวดหมู่' }), catTable] : []),
+        sum('ออมไว้แล้ว', fmtTHB(saved) + (inc ? ` (${(((inc - exp) / inc) * 100).toFixed(1)}%)` : '')),
+        sum('คงเหลือสุทธิ', (net >= 0 ? '+' : '−') + fmtTHB(Math.abs(net)), net >= 0 ? 'in' : 'out')),
+      ...(cats.length ? [el('h2', { textContent: 'รายจ่ายตามหมวดหมู่' }), catTbl(cats, exp)] : []),
+      ...(saves.length ? [el('h2', { textContent: '🐷 ออมเงินตามหมวดหมู่' }), catTbl(saves, saved)] : []),
       el('h2', { textContent: `รายการทั้งหมด (${list.length.toLocaleString('th-TH')} รายการ)` }),
       list.length ? txTable : el('div', { className: 'r-sub', textContent: 'ไม่มีรายการในช่วงนี้' }),
       el('div', { className: 'r-foot', textContent: 'สร้างจากแอป Ben' }));

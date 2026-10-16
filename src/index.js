@@ -324,7 +324,9 @@ app.get('/api/goals', async (c) => {
   const uid = c.get('uid');
   const { results } = await c.env.DB.prepare(
     `SELECT g.id, g.name, g.target, g.start_date,
-       COALESCE((SELECT SUM(CASE WHEN t.type='income' THEN t.amount ELSE -t.amount END)
+       COALESCE((SELECT SUM(CASE WHEN t.type='income' THEN t.amount
+                                  WHEN t.category LIKE '%ออม%' OR t.category LIKE '%ลงทุน%' OR t.category LIKE '%กองทุน%' OR t.category LIKE '%เงินเก็บ%' OR t.category LIKE '%ฉุกเฉิน%' THEN 0
+                                  ELSE -t.amount END)
                  FROM transactions t WHERE t.user_id = g.user_id AND t.date >= g.start_date), 0) AS saved
      FROM goals g WHERE g.user_id = ? ORDER BY g.id`
   ).bind(uid).all();

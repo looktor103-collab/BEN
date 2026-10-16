@@ -192,3 +192,12 @@ dialog h3{font-size:14px;font-weight:700;margin-bottom:10px}
 .sep{border:none;border-top:1px solid var(--line);margin:18px 0}
 #accountDialog{max-height:90vh;overflow-y:auto}
 #accountDialog .ok{background:var(--income-soft);color:var(--income);border-radius:14px;padding:10px 14px;font-size:12.5px;margin-bottom:14px}
+
+/* ---------- category chips + savings ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{background:var(--panel2);color:var(--text);border:2px solid transparent;border-radius:999px;padding:6px 11px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;min-height:36px}
+.chip.saving{background:var(--accent-soft);color:var(--accent)}
+.chip.on{border-color:var(--accent)}
+.chip:active{transform:scale(.96)}
+.tx.saving .bubble{background:var(--accent-soft)}
+.tx.saving .amt{color:var(--accent)}

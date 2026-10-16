@@ -90,7 +90,7 @@
       <div class="kpi" style="--tint:var(--income-soft)"><div class="emo">🤑</div><div class="label">รายรับ</div><div class="value" id="kIncome">–</div></div>
       <div class="kpi" style="--tint:var(--expense-soft)"><div class="emo">💸</div><div class="label">รายจ่าย</div><div class="value" id="kExpense">–</div></div>
       <div class="kpi" style="--tint:var(--accent-soft)"><div class="emo">🪙</div><div class="label">คงเหลือสุทธิ</div><div class="value" id="kNet">–</div></div>
-      <div class="kpi" style="--tint:var(--warn-soft)"><div class="emo">🐷</div><div class="label">อัตราการออม</div><div class="value" id="kRate">–</div><div class="delta muted" id="kCount"></div></div>
+      <div class="kpi" style="--tint:var(--warn-soft)"><div class="emo">🐷</div><div class="label">ออมไว้แล้ว</div><div class="value" id="kSaved">–</div><div class="delta muted" id="kCount"></div></div>
     </section>
 
     <div class="grid">
@@ -150,7 +150,8 @@
       <div class="field"><label for="txAmount">จำนวนเงิน (บาท)</label>
         <input id="txAmount" type="number" inputmode="decimal" min="0.01" step="0.01" required /></div>
       <div class="field"><label for="txCat">หมวดหมู่</label>
-        <input id="txCat" list="catList" required maxlength="60" /></div>
+        <input id="txCat" list="catList" required maxlength="60" />
+        <div class="chips" id="catChips"></div></div>
       <div class="field"><label for="txDate">วันที่</label>
         <input id="txDate" type="date" required /></div>
       <div class="field"><label for="txNote">โน้ต</label>
