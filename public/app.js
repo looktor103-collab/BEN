@@ -423,6 +423,82 @@
       $('loadingView').textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้: ' + err.message;
     }
   }
+  // ---------- PDF export (print-to-PDF of a clean report) ----------
+  const thLong = (d) => d.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  function buildReport() {
+    const root = $('report');
+    const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
+    const { from } = range();
+    const label = $('period').selectedOptions[0].textContent.replace(/^\S+\s/, '');
+    const list = [...TX];
+    let inc = 0, exp = 0;
+    list.forEach((x) => (x.type === 'income' ? (inc += x.amount) : (exp += x.amount)));
+    const net = inc - exp;
+    const sum = (l, v, cls) => el('div', {}, el('small', { textContent: l }), el('b', { textContent: v, className: cls || '' }));
+
+    const byCat = {};
+    list.filter((x) => x.type === 'expense').forEach((x) => (byCat[x.category] = (byCat[x.category] || 0) + x.amount));
+    const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+
+    const catTable = el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'หมวดหมู่' }), el('th', { className: 'num', textContent: 'จำนวน' }), el('th', { className: 'num', textContent: 'สัดส่วน' }))),
+      el('tbody', {}, ...cats.map(([c, v]) => el('tr', {}, el('td', { textContent: emojiFor(c, 'expense') + ' ' + c }), el('td', { className: 'num', textContent: fmtTHB(v) }), el('td', { className: 'num', textContent: exp ? ((v / exp) * 100).toFixed(1) + '%' : '–' })))));
+
+    const txTable = el('table', {}, el('thead', {}, el('tr', {}, ...['วันที่', 'หมวดหมู่', 'โน้ต'].map((t) => el('th', { textContent: t })), el('th', { className: 'num', textContent: 'จำนวน' }))),
+      el('tbody', {}, ...list.map((x) => el('tr', {}, el('td', { textContent: thDate(x.date) }), el('td', { textContent: x.category }), el('td', { textContent: x.note }),
+        el('td', { className: 'num ' + (x.type === 'income' ? 'in' : 'out'), textContent: (x.type === 'income' ? '+' : '−') + fmtTHB(x.amount) })))));
+
+    root.replaceChildren(
+      el('h1', { textContent: '🪙 Ben · รายงานการเงิน' }),
+      el('div', { className: 'r-sub', textContent: `${label}${from ? ' (ตั้งแต่ ' + thLong(new Date(from + 'T00:00:00')) + ')' : ''} · สร้างเมื่อ ${thLong(new Date())} · ${$('userName').textContent}` }),
+      el('div', { className: 'r-sum' }, sum('รายรับ', fmtTHB(inc), 'in'), sum('รายจ่าย', fmtTHB(exp), 'out'),
+        sum('คงเหลือสุทธิ', (net >= 0 ? '+' : '−') + fmtTHB(Math.abs(net)), net >= 0 ? 'in' : 'out'), sum('อัตราการออม', inc ? ((net / inc) * 100).toFixed(1) + '%' : '–')),
+      ...(cats.length ? [el('h2', { textContent: 'รายจ่ายตามหมวดหมู่' }), catTable] : []),
+      el('h2', { textContent: `รายการทั้งหมด (${list.length.toLocaleString('th-TH')} รายการ)` }),
+      list.length ? txTable : el('div', { className: 'r-sub', textContent: 'ไม่มีรายการในช่วงนี้' }),
+      el('div', { className: 'r-foot', textContent: 'สร้างจากแอป Ben' }));
+  }
+  $('pdfBtn').onclick = () => {
+    setMenu(false);
+    buildReport();
+    const oldTitle = document.title;
+    document.title = 'Ben-รายงาน-' + ymd(new Date()); // becomes the default PDF file name
+    window.addEventListener('afterprint', () => { document.title = oldTitle; $('report').replaceChildren(); }, { once: true });
+    setTimeout(() => window.print(), 150);
+  };
+
+  // ---------- account settings ----------
+  const acct = $('accountDialog');
+  const setMsg = (id, text, ok) => { const e = $(id); e.textContent = text || ''; e.className = ok ? 'ok' : 'err'; show(e, !!text); };
+  $('accountBtn').onclick = () => {
+    setMenu(false);
+    ['usernameForm', 'passwordForm'].forEach((f) => $(f).reset());
+    setMsg('userErr', ''); setMsg('pwErr', '');
+    $('acctNewUser').value = $('userName').textContent;
+    acct.showModal();
+  };
+  $('acctClose').onclick = () => acct.close();
+  $('usernameForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const r = await api('/account/username', { method: 'POST', body: { current_password: $('acctUserPw').value, new_username: $('acctNewUser').value.trim() } });
+      $('userName').textContent = r.username;
+      const g = $('greeting').textContent.split(' ');
+      g[g.length - 2] = r.username;
+      $('greeting').textContent = g.join(' ');
+      $('acctUserPw').value = '';
+      setMsg('userErr', '✅ เปลี่ยน username แล้ว ครั้งหน้าเข้าสู่ระบบด้วยชื่อใหม่', true);
+    } catch (err) { setMsg('userErr', err.message); }
+  });
+  $('passwordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if ($('acctNewPw').value !== $('acctNewPw2').value) return setMsg('pwErr', 'รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน');
+    try {
+      await api('/account/password', { method: 'POST', body: { current_password: $('acctOldPw').value, new_password: $('acctNewPw').value } });
+      $('passwordForm').reset();
+      setMsg('pwErr', '✅ เปลี่ยนรหัสผ่านแล้ว', true);
+    } catch (err) { setMsg('pwErr', err.message); }
+  });
+
   // ---------- PWA ----------
   if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
   let deferredInstall = null;

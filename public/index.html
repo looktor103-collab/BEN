@@ -76,10 +76,12 @@
       </select>
       <button class="btn-sm primary" id="addBtn">➕ เพิ่มรายการ</button>
       <button class="btn-sm" id="scanBtn">📸 สแกนสลิป</button>
+      <button class="btn-sm" id="pdfBtn">📄 ส่งออก PDF</button>
       <button class="btn-sm" id="exportBtn">📤 ส่งออก CSV</button>
       <button class="btn-sm" id="installBtn" hidden>📲 ติดตั้งแอป</button>
       <span class="hint" id="iosHint" hidden>iPhone: กดปุ่มแชร์ ⎙ แล้วเลือก “เพิ่มไปยังหน้าจอโฮม”</span>
       <span class="muted live" id="lastUpdate"></span>
+      <button class="btn-sm" id="accountBtn">⚙️ บัญชีของฉัน</button>
       <button class="btn-sm" id="signOutBtn">👋 ออกจากระบบ</button>
     </aside>
 
@@ -120,6 +122,8 @@
     </div>
   </div>
 
+  <section id="report" aria-hidden="true"></section>
+
   <button class="fab" id="fabBtn" aria-label="เพิ่มรายการ">＋</button>
   <datalist id="catList"></datalist>
 
@@ -156,6 +160,33 @@
         <button class="btn-sm primary" type="submit" id="txSave">บันทึก</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="accountDialog">
+    <h2>⚙️ บัญชีของฉัน</h2>
+    <form id="usernameForm" autocomplete="off">
+      <h3>เปลี่ยน username</h3>
+      <div class="field"><label for="acctNewUser">username ใหม่</label>
+        <input id="acctNewUser" required minlength="3" maxlength="64" pattern="[A-Za-z0-9_.@+\-]{3,64}" autocomplete="username" /></div>
+      <div class="field"><label for="acctUserPw">รหัสผ่านปัจจุบัน</label>
+        <input id="acctUserPw" type="password" required autocomplete="current-password" /></div>
+      <div class="err" id="userErr" hidden></div>
+      <button class="btn-sm primary" type="submit">บันทึก username</button>
+    </form>
+    <hr class="sep" />
+    <form id="passwordForm" autocomplete="off">
+      <h3>เปลี่ยนรหัสผ่าน</h3>
+      <div class="field"><label for="acctOldPw">รหัสผ่านปัจจุบัน</label>
+        <input id="acctOldPw" type="password" required autocomplete="current-password" /></div>
+      <div class="field"><label for="acctNewPw">รหัสผ่านใหม่ (อย่างน้อย 8 ตัว)</label>
+        <input id="acctNewPw" type="password" required minlength="8" autocomplete="new-password" /></div>
+      <div class="field"><label for="acctNewPw2">ยืนยันรหัสผ่านใหม่</label>
+        <input id="acctNewPw2" type="password" required minlength="8" autocomplete="new-password" /></div>
+      <div class="hint">เปลี่ยนรหัสผ่านแล้ว อุปกรณ์เครื่องอื่นจะถูกออกจากระบบ</div>
+      <div class="err" id="pwErr" hidden></div>
+      <button class="btn-sm primary" type="submit">บันทึกรหัสผ่าน</button>
+    </form>
+    <div class="dialog-actions"><button class="btn-sm" type="button" id="acctClose">ปิด</button></div>
   </dialog>
 
   <dialog id="lightbox" class="lightbox">

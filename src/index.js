@@ -33,19 +33,21 @@ async function hmac(secret, data) {
   return b64(await crypto.subtle.sign('HMAC', key, enc.encode(data)));
 }
 
-async function makeSession(env, userId) {
+async function makeSession(env, userId, ver = 0) {
   const exp = Date.now() + SESSION_DAYS * 86400000;
-  const payload = `${userId}.${exp}`;
+  const payload = `${userId}.${ver}.${exp}`;
   return `${payload}.${await hmac(env.SESSION_SECRET, payload)}`;
 }
 
 async function readSession(env, token) {
   if (!token || !env.SESSION_SECRET) return null;
   const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  const [uid, exp, sig] = parts;
-  if (!safeEqual(sig, await hmac(env.SESSION_SECRET, `${uid}.${exp}`))) return null;
+  if (parts.length !== 4) return null;
+  const [uid, ver, exp, sig] = parts;
+  if (!safeEqual(sig, await hmac(env.SESSION_SECRET, `${uid}.${ver}.${exp}`))) return null;
   if (Number(exp) < Date.now()) return null;
+  const row = await env.DB.prepare('SELECT session_version FROM users WHERE id = ?').bind(Number(uid)).first();
+  if (!row || row.session_version !== Number(ver)) return null;
   return Number(uid);
 }
 
@@ -95,7 +97,7 @@ app.post('/api/auth/setup', async (c) => {
     'INSERT INTO users (username, pass_hash, salt) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM users)'
   ).bind(username, hash, salt).run();
   if (!r.meta.changes) return c.json({ error: 'ตั้งค่าบัญชีไปแล้ว' }, 409);
-  setSessionCookie(c, await makeSession(c.env, r.meta.last_row_id));
+  setSessionCookie(c, await makeSession(c.env, r.meta.last_row_id, 0));
   return c.json({ ok: true });
 });
 
@@ -106,7 +108,7 @@ app.post('/api/auth/login', async (c) => {
   const fails = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE username = ? AND ts > ?')
     .bind(key, Date.now() - LOCK_MS).first();
   if (fails.n >= MAX_FAILS) return c.json({ error: 'ลองผิดหลายครั้งเกินไป กรุณารอ 15 นาที' }, 429);
-  const u = await c.env.DB.prepare('SELECT id, pass_hash, salt FROM users WHERE username = ?').bind(username).first();
+  const u = await c.env.DB.prepare('SELECT id, pass_hash, salt, session_version FROM users WHERE username = ?').bind(username).first();
   // always hash so response time doesn't reveal whether the user exists
   const hash = await hashPassword(password, u ? u.salt : b64(new Uint8Array(16)));
   if (!u || !safeEqual(hash, u.pass_hash)) {
@@ -114,7 +116,7 @@ app.post('/api/auth/login', async (c) => {
     return c.json({ error: 'username หรือรหัสผ่านไม่ถูกต้อง' }, 401);
   }
   await c.env.DB.prepare('DELETE FROM login_attempts WHERE username = ?').bind(key).run();
-  setSessionCookie(c, await makeSession(c.env, u.id));
+  setSessionCookie(c, await makeSession(c.env, u.id, u.session_version));
   return c.json({ ok: true });
 });
 
@@ -129,6 +131,51 @@ app.use('/api/*', async (c, next) => {
   if (!uid) return c.json({ error: 'unauthorized' }, 401);
   c.set('uid', uid);
   await next();
+});
+
+// ---------- account: change username / password (needs the current password) ----------
+async function verifyCurrent(c, uid, password) {
+  const u = await c.env.DB.prepare('SELECT id, username, pass_hash, salt, session_version FROM users WHERE id = ?').bind(uid).first();
+  if (!u || typeof password !== 'string') return { error: 'กรุณากรอกรหัสผ่านปัจจุบัน', status: 400 };
+  const key = u.username.toLowerCase();
+  const fails = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM login_attempts WHERE username = ? AND ts > ?')
+    .bind(key, Date.now() - LOCK_MS).first();
+  if (fails.n >= MAX_FAILS) return { error: 'ลองผิดหลายครั้งเกินไป กรุณารอ 15 นาที', status: 429 };
+  if (!safeEqual(await hashPassword(password, u.salt), u.pass_hash)) {
+    await c.env.DB.prepare('INSERT INTO login_attempts (username, ts) VALUES (?, ?)').bind(key, Date.now()).run();
+    return { error: 'รหัสผ่านปัจจุบันไม่ถูกต้อง', status: 403 };
+  }
+  await c.env.DB.prepare('DELETE FROM login_attempts WHERE username = ?').bind(key).run();
+  return { user: u };
+}
+
+app.post('/api/account/password', async (c) => {
+  const { current_password, new_password } = (await c.req.json().catch(() => null)) || {};
+  if (!validPassword(new_password)) return c.json({ error: 'รหัสผ่านใหม่ต้องยาวอย่างน้อย 8 ตัวอักษร' }, 400);
+  const v = await verifyCurrent(c, c.get('uid'), current_password);
+  if (v.error) return c.json({ error: v.error }, v.status);
+  if (new_password === current_password) return c.json({ error: 'รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสเดิม' }, 400);
+  const salt = b64(crypto.getRandomValues(new Uint8Array(16)));
+  const hash = await hashPassword(new_password, salt);
+  const ver = v.user.session_version + 1;
+  await c.env.DB.prepare('UPDATE users SET pass_hash = ?, salt = ?, session_version = ? WHERE id = ?')
+    .bind(hash, salt, ver, v.user.id).run();
+  setSessionCookie(c, await makeSession(c.env, v.user.id, ver)); // keep this device signed in, drop the others
+  return c.json({ ok: true });
+});
+
+app.post('/api/account/username', async (c) => {
+  const { current_password, new_username } = (await c.req.json().catch(() => null)) || {};
+  if (!validUsername(new_username)) return c.json({ error: 'username ต้องเป็น a-z, 0-9, _ . - @ + ยาว 3-64 ตัว (ห้ามเว้นวรรค/ภาษาไทย)' }, 400);
+  const v = await verifyCurrent(c, c.get('uid'), current_password);
+  if (v.error) return c.json({ error: v.error }, v.status);
+  if (new_username === v.user.username) return c.json({ error: 'username ใหม่ซ้ำกับของเดิม' }, 400);
+  try {
+    await c.env.DB.prepare('UPDATE users SET username = ? WHERE id = ?').bind(new_username, v.user.id).run();
+  } catch {
+    return c.json({ error: 'username นี้ถูกใช้แล้ว' }, 409);
+  }
+  return c.json({ ok: true, username: new_username });
 });
 
 const KEY_RE = (uid) => new RegExp('^' + uid + '/[0-9a-f-]{36}$');
