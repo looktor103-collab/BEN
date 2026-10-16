@@ -58,7 +58,7 @@ function setSessionCookie(c, token) {
   });
 }
 
-const validUsername = (u) => typeof u === 'string' && /^[A-Za-z0-9_.-]{3,32}$/.test(u);
+const validUsername = (u) => typeof u === 'string' && /^[A-Za-z0-9_.@+-]{3,64}$/.test(u);
 const validPassword = (p) => typeof p === 'string' && p.length >= 8 && p.length <= 200;
 const validDate = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(Date.parse(d));
 
@@ -85,7 +85,7 @@ app.get('/api/me', async (c) => {
 app.post('/api/auth/setup', async (c) => {
   if (!c.env.SESSION_SECRET) return c.json({ error: 'เซิร์ฟเวอร์ยังไม่ได้ตั้งค่า SESSION_SECRET' }, 500);
   const { username, password } = await c.req.json().catch(() => ({}));
-  if (!validUsername(username)) return c.json({ error: 'username ต้องเป็น a-z, 0-9, _ . - ยาว 3-32 ตัว' }, 400);
+  if (!validUsername(username)) return c.json({ error: 'username ต้องเป็น a-z, 0-9, _ . - @ + ยาว 3-64 ตัว (ห้ามเว้นวรรค/ภาษาไทย)' }, 400);
   if (!validPassword(password)) return c.json({ error: 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร' }, 400);
   const salt = b64(crypto.getRandomValues(new Uint8Array(16)));
   const hash = await hashPassword(password, salt);

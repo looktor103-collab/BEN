@@ -21,11 +21,12 @@
     <div class="err" id="authError" hidden></div>
     <div class="field">
       <label for="username">Username</label>
-      <input id="username" name="username" autocomplete="username" required minlength="3" maxlength="32" />
+      <input id="username" name="username" autocomplete="username" required minlength="3" maxlength="64" pattern="[A-Za-z0-9_.@+-]{3,64}" title="a-z, 0-9, _ . - @ + ยาว 3-64 ตัว" />
     </div>
     <div class="field">
       <label for="password">รหัสผ่าน</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required minlength="8" />
+      <div class="hint" id="pwHint" hidden>อย่างน้อย 8 ตัวอักษร</div>
     </div>
     <div class="field" id="confirmField" hidden>
       <label for="password2">ยืนยันรหัสผ่าน</label>

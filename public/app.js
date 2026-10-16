@@ -32,6 +32,7 @@
     $('authSubmit').textContent = setup ? 'สร้างบัญชี' : 'เข้าสู่ระบบ';
     $('password').autocomplete = setup ? 'new-password' : 'current-password';
     show($('confirmField'), setup);
+    show($('pwHint'), setup);
     $('password2').required = setup;
   }
   const authError = (m) => { $('authError').textContent = m || ''; show($('authError'), !!m); };
