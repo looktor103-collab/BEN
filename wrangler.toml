@@ -1,0 +1,14 @@
+name = "ben"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ben-db"
+database_id = "2c20f400-07f8-4f5c-bf5d-d0a3ed726b16"

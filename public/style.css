@@ -1,0 +1,65 @@
+:root{
+  --bg:#0e1116; --panel:#161b23; --panel2:#1c232e; --line:rgba(255,255,255,.07);
+  --text:#e8edf4; --muted:#8b95a7;
+  --income:#34d399; --expense:#f87171; --accent:#60a5fa; --warn:#fbbf24;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:"Noto Sans Thai",system-ui,sans-serif;padding:20px;min-height:100vh}
+[hidden]{display:none !important}
+.wrap{max-width:1200px;margin:0 auto}
+.center{display:flex;align-items:center;justify-content:center;min-height:90vh}
+.muted{color:var(--muted)}
+.login-card{width:min(400px,100%);background:linear-gradient(180deg,rgba(96,165,250,.06),rgba(22,27,35,.9)),var(--panel);border:1px solid var(--line);border-radius:20px;padding:32px 28px}
+.login-card h1{font-size:22px;text-align:center}
+.brand{text-align:center;font-size:28px;margin-bottom:10px}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.login-card .sub{text-align:center;margin:6px 0 22px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+input,select{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;outline:none;max-width:100%}
+.field input{width:100%}
+input:focus,select:focus{border-color:var(--accent)}
+.btn{width:100%;background:var(--accent);color:#0b1220;border:none;border-radius:10px;padding:12px;font:inherit;font-weight:600;cursor:pointer}
+.btn:hover{filter:brightness(1.1)}
+.btn-sm{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer}
+.btn-sm.primary{background:var(--accent);color:#0b1220;border-color:transparent;font-weight:600}
+.btn-sm:hover{filter:brightness(1.15)}
+.err{background:rgba(248,113,113,.1);color:var(--expense);border-radius:10px;padding:9px 12px;font-size:12.5px;margin-bottom:14px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:20px;font-weight:700}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;position:relative;overflow:hidden}
+.kpi::after{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--bar,var(--accent))}
+.kpi .label{color:var(--muted);font-size:12.5px;margin-bottom:6px}
+.kpi .value{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.kpi .delta{margin-top:6px;font-size:12.5px}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+.grid3{display:grid;grid-template-columns:1fr 1.4fr;gap:14px}
+@media(max-width:900px){.grid,.grid3{grid-template-columns:1fr}body{padding:12px}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;min-width:0}
+.card h2{font-size:14px;font-weight:600}
+.hint{color:var(--muted);font-size:12px;margin-top:2px}
+.chart-wrap{position:relative;height:270px;margin-top:12px}
+.chart-wrap.sm{height:230px}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+th{color:var(--muted);text-align:left;font-weight:500;padding:8px 6px;border-bottom:1px solid var(--line)}
+td{padding:8px 6px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.right{text-align:right}
+.in{color:var(--income)} .out{color:var(--expense)}
+.row-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px}
+.row-btn:hover{color:var(--text)}
+.bud{margin-top:14px}
+.bud-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+.bar{height:8px;background:var(--panel2);border-radius:999px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--income);border-radius:999px}
+.bar.warn>i{background:var(--warn)} .bar.over>i{background:var(--expense)}
+.inline-form{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.inline-form input{flex:1 1 120px;min-width:0}
+dialog{margin:auto;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:22px;width:min(400px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog h2{font-size:16px;margin-bottom:14px}
+.seg{display:flex;gap:16px;margin-bottom:14px;font-size:14px}
+.seg input{padding:0;margin-right:6px}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px}

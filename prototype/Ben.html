@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Finance Webapp 2026 · เข้าสู่ระบบ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b23; --panel2:#1c232e; --line:rgba(255,255,255,.07);
+    --text:#e8edf4; --muted:#8b95a7;
+    --income:#34d399; --expense:#f87171; --accent:#60a5fa; --warn:#fbbf24;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{background:var(--bg); color:var(--text); font-family:"Noto Sans Thai",system-ui,sans-serif; padding:20px; min-height:100vh}
+  .wrap{max-width:1200px; margin:0 auto}
+  [hidden]{display:none !important}
+
+  /* ===== Login ===== */
+  #loginView{display:flex; align-items:center; justify-content:center; min-height:90vh}
+  .login-card{width:min(400px,100%); background:linear-gradient(180deg,rgba(96,165,250,.06),rgba(22,27,35,.9)),var(--panel);
+    border:1px solid var(--line); border-radius:20px; padding:32px 28px; backdrop-filter:blur(12px)}
+  .login-card h1{font-size:22px; text-align:center}
+  .login-card .sub{text-align:center; color:var(--muted); font-size:13px; margin:6px 0 22px}
+  .field{margin-bottom:14px}
+  .field label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px}
+  .field input{width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:11px 14px; font:inherit; font-size:14px; outline:none; transition:border-color .15s}
+  .field input:focus{border-color:var(--accent)}
+  .btn{width:100%; background:var(--accent); color:#0b1220; border:none; border-radius:10px; padding:12px; font:inherit; font-weight:600; cursor:pointer; transition:filter .15s}
+  .btn:hover{filter:brightness(1.1)}
+  .btn.ghost{background:var(--panel2); color:var(--text); border:1px solid var(--line); margin-top:10px}
+  .link{display:block; text-align:center; color:var(--accent); font-size:12.5px; margin-top:14px; background:none; border:none; cursor:pointer; width:100%}
+  .swap{text-align:center; font-size:12.5px; color:var(--muted); margin-top:16px}
+  .swap button{color:var(--accent); background:none; border:none; cursor:pointer; font:inherit}
+  .err{background:rgba(248,113,113,.1); color:var(--expense); border-radius:10px; padding:9px 12px; font-size:12.5px; margin-bottom:14px}
+  .brand{text-align:center; font-size:28px; margin-bottom:10px}
+
+  /* ===== Dashboard ===== */
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px}
+  h1{font-size:20px; font-weight:700}
+  .sub{color:var(--muted); font-size:13px; margin-top:2px}
+  .live{display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line); padding:8px 14px; border-radius:999px; font-size:12.5px}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--income); animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)} 70%{box-shadow:0 0 0 8px rgba(52,211,153,0)} 100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+  select,.btn-sm{background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:8px 12px; font:inherit; font-size:13px; cursor:pointer}
+  .userchip{display:flex; align-items:center; gap:10px}
+  .userchip .avatar{width:32px; height:32px; border-radius:50%; background:var(--accent); color:#0b1220; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px}
+  .userchip .email{font-size:12.5px; color:var(--muted)}
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-bottom:14px}
+  .kpi{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 18px; position:relative; overflow:hidden}
+  .kpi::after{content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--bar,var(--accent))}
+  .kpi .label{color:var(--muted); font-size:12.5px; margin-bottom:6px}
+  .kpi .value{font-size:26px; font-weight:700; font-variant-numeric:tabular-nums}
+  .kpi .delta{margin-top:6px; font-size:12.5px}
+  .up{color:var(--income)} .down{color:var(--expense)}
+  .grid{display:grid; grid-template-columns:2fr 1fr; gap:14px; margin-bottom:14px}
+  .grid3{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media(max-width:900px){.grid,.grid3{grid-template-columns:1fr}}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 18px}
+  .card h2{font-size:14px; font-weight:600}
+  .hint{color:var(--muted); font-size:12px; margin-top:2px}
+  .chart-wrap{position:relative; height:270px; margin-top:12px}
+  .chart-wrap.sm{height:230px}
+  table{width:100%; border-collapse:collapse; font-size:13px; margin-top:10px}
+  th{color:var(--muted); text-align:left; font-weight:500; padding:8px 6px; border-bottom:1px solid var(--line)}
+  td{padding:8px 6px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums}
+  .tag{display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px}
+  .tag.in{background:rgba(52,211,153,.12); color:var(--income)}
+  .tag.out{background:rgba(248,113,113,.12); color:var(--expense)}
+  .right{text-align:right}
+</style>
+</head>
+<body>
+
+<!-- ===== 1) Loading ===== -->
+<div id="loadingView" style="display:flex;align-items:center;justify-content:center;min-height:90vh;color:var(--muted)">
+  กำลังโหลด…
+</div>
+
+<!-- ===== 2) Login / Register ===== -->
+<div id="loginView" hidden>
+  <div class="login-card">
+    <div class="brand">💰</div>
+    <h1 id="authTitle">เข้าสู่ระบบ</h1>
+    <p class="sub">แดชบอร์ดรายรับ–รายจ่าย Real-time 2026</p>
+    <div class="err" id="authError" hidden></div>
+    <div class="field">
+      <label for="email">อีเมล</label>
+      <input id="email" type="email" placeholder="you@company.co.th" autocomplete="email" />
+    </div>
+    <div class="field">
+      <label for="password">รหัสผ่าน</label>
+      <input id="password" type="password" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="current-password" />
+    </div>
+    <button class="btn" id="authSubmit">เข้าสู่ระบบ</button>
+    <button class="btn ghost" id="demoBtn">🎭 เข้าใช้งานตัวอย่าง (ไม่ต้องสมัคร)</button>
+    <button class="link" id="forgotBtn">ลืมรหัสผ่าน?</button>
+    <div class="swap">ยังไม่มีบัญชี? <button id="swapMode">สมัครสมาชิก</button></div>
+  </div>
+</div>
+
+<!-- ===== 3) Dashboard ===== -->
+<main id="appView" hidden>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <h1>💰 แดชบอร์ดรายรับ–รายจ่าย</h1>
+        <div class="sub">ข้อมูลแบบ Real-time · ปีงบ 2026</div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <div class="live"><span class="dot"></span><span id="lastUpdate">—</span></div>
+        <select id="period">
+          <option value="7">7 วันล่าสุด</option>
+          <option value="30" selected>30 วันล่าสุด</option>
+          <option value="all">ทั้งหมด</option>
+        </select>
+        <button class="btn-sm" id="toggleLive">⏸ หยุดชั่วคราว</button>
+        <div class="userchip">
+          <div class="avatar" id="avatar">?</div>
+          <div><div id="userEmail" style="font-size:13px"></div><div class="email" id="userMode">—</div></div>
+          <button class="btn-sm" id="signOutBtn">ออกจากระบบ</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi" style="--bar:var(--income)"><div class="label">รายรับรวม</div><div class="value" id="kIncome">–</div><div class="delta"></div></div>
+      <div class="kpi" style="--bar:var(--expense)"><div class="label">รายจ่ายรวม</div><div class="value" id="kExpense">–</div><div class="delta"></div></div>
+      <div class="kpi" style="--bar:var(--accent)"><div class="label">กำไร / ขาดทุนสุทธิ</div><div class="value" id="kProfit">–</div><div class="delta" id="dProfit"></div></div>
+      <div class="kpi" style="--bar:var(--warn)"><div class="label">อัตรากำไรสุทธิ</div><div class="value" id="kMargin">–</div><div class="delta" id="dTx"></div></div>
+    </div>
+
+    <div class="grid">
+      <div class="card"><h2>กระแสรายรับ–รายจ่ายรายวัน</h2><div class="hint">แนวโน้มตามช่วงเวลาที่เลือก</div>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div></div>
+      <div class="card"><h2>โครงสร้างรายจ่าย</h2><div class="hint">สัดส่วนตามหมวดหมู่</div>
+        <div class="chart-wrap sm"><canvas id="expenseChart"></canvas></div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="card"><h2>แหล่งรายได้</h2><div class="hint">จัดอันดับตามมูลค่า</div>
+        <div class="chart-wrap sm"><canvas id="incomeChart"></canvas></div></div>
+      <div class="card"><h2>รายการล่าสุด</h2><div class="hint">อัปเดตอัตโนมัติทุกไม่กี่วินาที</div>
+        <table><thead><tr><th>เวลา</th><th>รายการ</th><th>ประเภท</th><th class="right">จำนวน</th></tr></thead>
+        <tbody id="txBody"></tbody></table></div>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+/* ================= FIREBASE CONFIG =================
+   วางค่าจาก Firebase Console > Project Settings > Your apps
+   ถ้าเว้นว่างไว้ = โหมด Demo (localStorage) จะใช้งานได้ทันที */
+const FIREBASE_CONFIG = {
+  apiKey: "",            // ← วางค่าตรงนี้
+  authDomain: "",
+  databaseURL: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+const configured = Boolean(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.databaseURL);
+
+/* ================= Auth abstraction ================= */
+let authApi, dataApi;
+
+function firebaseAdapter(config){
+  // โหลด SDK แบบ dynamic เพื่อไม่ให้ demo mode ต้องโหลด Firebase
+  return import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js")
+    .then(({ initializeApp }) => Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"),
+      initializeApp(config)
+    ]))
+    .then(([A, D, app]) => {
+      const auth = A.getAuth(app), db = D.getDatabase(app);
+      authApi = {
+        async init(){ await A.setPersistence(auth, A.browserLocalPersistence); },
+        watch(cb){ A.onAuthStateChanged(auth, u => cb(u && { uid:u.uid, email:u.email, mode:"firebase" })); },
+        signIn: (e,p) => A.signInWithEmailAndPassword(auth,e,p),
+        signUp: (e,p) => A.createUserWithEmailAndPassword(auth,e,p),
+        reset:  (e)   => A.sendPasswordResetEmail(auth,e),
+        signOut: ()   => A.signOut(auth)
+      };
+      dataApi = {
+        subscribe(uid, cb){
+          return D.onValue(D.ref(db, `users/${uid}/transactions`), snap => {
+            cb(Object.values(snap.val() || {}).sort((a,b)=>b.ts-a.ts));
+          });
+        }
+        // ตัวอย่างเขียนข้อมูล: D.push(D.ref(db, `users/${uid}/transactions`), tx)
+      };
+    });
+}
+
+function demoAdapter(){
+  const KEY = "demo_session";
+  authApi = {
+    async init(){ /* localStorage persistence อัตโนมัติ */ },
+    watch(cb){
+      const u = localStorage.getItem(KEY);
+      setTimeout(() => cb(u ? JSON.parse(u) : null), 300);
+    },
+    async signIn(email){
+      const u = { uid:"demo", email, mode:"demo" };
+      localStorage.setItem(KEY, JSON.stringify(u)); return u;
+    },
+    signUp: function(email){ return this.signIn(email); },
+    reset: async (email) => alert("โหมดตัวอย่าง: ปกติระบบจะส่งลิงก์รีเซ็ตรหัสผ่านไปที่ " + email),
+    signOut: () => localStorage.removeItem(KEY)
+  };
+  dataApi = { subscribe: (_uid, cb) => { window.__demoPush = cb; return () => {}; } };
+}
+
+/* ================= Views ================= */
+const $ = id => document.getElementById(id);
+const show = (el, on) => el.hidden = !on;
+let mode = "login"; // login | register
+
+function showError(msg){ const e = $("authError"); e.textContent = msg; show(e, !!msg); }
+function setMode(m){
+  mode = m;
+  $("authTitle").textContent = m === "login" ? "เข้าสู่ระบบ" : "สมัครสมาชิก";
+  $("authSubmit").textContent = m === "login" ? "เข้าสู่ระบบ" : "สร้างบัญชี";
+  $("swapMode").textContent = m === "login" ? "สมัครสมาชิก" : "มีบัญชีแล้ว — เข้าสู่ระบบ";
+  showError("");
+}
+
+$("swapMode").onclick = () => setMode(mode === "login" ? "register" : "login");
+$("authSubmit").onclick = async () => {
+  const email = $("email").value.trim(), pass = $("password").value;
+  if (!email || pass.length < 6) return showError("กรุณากรอกอีเมล และรหัสผ่านอย่างน้อย 6 ตัวอักษร");
+  try {
+    if (mode === "login") await authApi.signIn(email, pass);
+    else await authApi.signUp(email, pass);
+    showError("");
+  } catch (err){ showError(translateErr(err)); }
+};
+$("forgotBtn").onclick = () => {
+  const email = $("email").value.trim();
+  if (!email) return showError("กรอกอีเมลก่อน แล้วกดลืมรหัสผ่าน");
+  authApi.reset(email).then(() => showError("")).catch(e => showError(translateErr(e)));
+};
+$("demoBtn").onclick = () => authApi.signIn("demo@demo.co.th", "demo123456");
+
+function translateErr(err){
+  const c = err?.code || "";
+  if (c.includes("invalid-credential") || c.includes("wrong-password")) return "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+  if (c.includes("email-already-in-use")) return "อีเมลนี้ถูกใช้แล้ว ลองเข้าสู่ระบบ";
+  if (c.includes("weak-password")) return "รหัสผ่านสั้นเกินไป (อย่างน้อย 6 ตัว)";
+  if (c.includes("invalid-email")) return "รูปแบบอีเมลไม่ถูกต้อง";
+  return err?.message || "เกิดข้อผิดพลาด ลองอีกครั้ง";
+}
+
+/* ================= Dashboard logic (เหมือนเวอร์ชันก่อน) ================= */
+const INCOME_CATS = [
+  { name:"ขายสินค้า",  color:"#34d399", ex:["ใบแจ้งหนี้ #1288","ขายปลีกสาขา 1","ขายออนไลน์"] },
+  { name:"ค่าบริการ",  color:"#60a5fa", ex:["สัญญาบริการรายเดือน","ค่าติดตั้ง"] },
+  { name:"รายได้อื่น", color:"#a78bfa", ex:["ดอกเบี้ยรับ","ขายของเก่า"] },
+];
+const EXPENSE_CATS = [
+  { name:"เงินเดือน & บุคลากร",  color:"#f87171", ex:["เงินเดือนพนักงาน","ค่าโบนัส","ประกันสังคม"] },
+  { name:"วัตถุดิบ / สินค้า",    color:"#fbbf24", ex:["สั่งซื้อวัตถุดิบ","เติมสต๊อก"] },
+  { name:"การตลาด",             color:"#f472b6", ex:["ยิงแอด Facebook","Google Ads"] },
+  { name:"ค่าเช่า & สาธารณูปโภค", color:"#22d3ee", ex:["ค่าเช่าออฟฟิศ","ค่าไฟ–น้ำ–เน็ต"] },
+  { name:"ค่าขนส่ง",            color:"#94a3b8", ex:["ค่าส่ง KERRY","Flash Express"] },
+];
+const fmtTHB = n => new Intl.NumberFormat("th-TH",{style:"currency",currency:"THB",maximumFractionDigits:0}).format(n);
+const fmtShort = n => n >= 1e6 ? (n/1e6).toFixed(1)+"M" : n >= 1e3 ? (n/1e3).toFixed(0)+"K" : ""+n;
+Chart.defaults.font.family = '"Noto Sans Thai", sans-serif';
+Chart.defaults.color = "#8b95a7";
+
+let TX = [], stopDemoTimer = null, live = true;
+
+function randomTx(){
+  const isIncome = Math.random() < 0.45;
+  const c = (isIncome ? INCOME_CATS : EXPENSE_CATS)[Math.floor(Math.random()*3)];
+  return { ts:Date.now(), type:isIncome?"income":"expense", cat:c.name,
+    amount:Math.round(500+Math.random()*(isIncome?45000:28000)),
+    note:c.ex[Math.floor(Math.random()*c.ex.length)] };
+}
+function seed(){
+  const now = Date.now(), day = 86400000;
+  for (let d = 45; d >= 0; d--)
+    for (let i = 0; i < 4 + Math.floor(Math.random()*5); i++){
+      const inc = Math.random() < 0.44;
+      const c = (inc?INCOME_CATS:EXPENSE_CATS)[Math.floor(Math.random()*3)];
+      TX.push({ ts:now-d*day+Math.random()*day, type:inc?"income":"expense", cat:c.name,
+        amount:Math.round(800+Math.random()*(inc?120000:70000)), note:c.ex[0] });
+    }
+  TX.sort((a,b)=>b.ts-a.ts);
+}
+
+const gridCfg = { grid:{color:"rgba(255,255,255,.06)"}, ticks:{font:{size:11}} };
+const trend = new Chart($("trendChart"), { type:"line",
+  data:{ labels:[], datasets:[
+    { label:"รายรับ", data:[], borderColor:"#34d399", backgroundColor:"rgba(52,211,153,.12)", fill:true, tension:.35, pointRadius:0, borderWidth:2 },
+    { label:"รายจ่าย", data:[], borderColor:"#f87171", backgroundColor:"rgba(248,113,113,.10)", fill:true, tension:.35, pointRadius:0, borderWidth:2 }]},
+  options:{ maintainAspectRatio:false, interaction:{mode:"index",intersect:false},
+    plugins:{ legend:{ labels:{ usePointStyle:true, boxWidth:8 } },
+      tooltip:{ callbacks:{ label:c => c.dataset.label+": "+fmtTHB(c.parsed.y) } } },
+    scales:{ x:gridCfg, y:{ ...gridCfg, ticks:{ ...gridCfg.ticks, callback:v=>fmtShort(v) } } } } });
+
+const expChart = new Chart($("expenseChart"), { type:"doughnut",
+  data:{ labels:[], datasets:[{ data:[], backgroundColor:[], borderWidth:0, hoverOffset:6 }]},
+  options:{ maintainAspectRatio:false, cutout:"62%",
+    plugins:{ legend:{ position:"bottom", labels:{ usePointStyle:true, boxWidth:8, font:{size:11} } },
+      tooltip:{ callbacks:{ label:c => c.label+": "+fmtTHB(c.parsed) } } } } });
+
+const incChart = new Chart($("incomeChart"), { type:"bar",
+  data:{ labels:[], datasets:[{ data:[], backgroundColor:[], borderRadius:8, barThickness:18 }]},
+  options:{ indexAxis:"y", maintainAspectRatio:false, plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ label:c => fmtTHB(c.parsed.x) } } },
+    scales:{ x:{ ...gridCfg, ticks:{ ...gridCfg.ticks, callback:v=>fmtShort(v) } }, y:{ grid:{display:false} } } } });
+
+function render(){
+  const v = $("period").value;
+  const list = v === "all" ? TX : TX.filter(x => x.ts >= Date.now() - (+v)*86400000);
+  // P&L: กำไรสุทธิ = รายรับ − รายจ่าย | อัตรากำไร = กำไร ÷ รายรับ × 100
+  let inc = 0, exp = 0;
+  list.forEach(x => x.type === "income" ? inc += x.amount : exp += x.amount);
+  const profit = inc - exp, margin = inc ? profit/inc*100 : 0;
+
+  $("kIncome").textContent = fmtTHB(inc);
+  $("kExpense").textContent = fmtTHB(exp);
+  const p = $("kProfit");
+  p.textContent = (profit >= 0 ? "+" : "") + fmtTHB(profit);
+  p.style.color = profit >= 0 ? "var(--income)" : "var(--expense)";
+  $("dProfit").innerHTML = profit >= 0 ? '<span class="up">📈 สถานะ: กำไร</span>' : '<span class="down">📉 สถานะ: ขาดทุน</span>';
+  $("kMargin").textContent = margin.toFixed(1) + "%";
+  $("dTx").textContent = "จากทั้งหมด " + list.length.toLocaleString("th-TH") + " รายการ";
+
+  const byDay = {};
+  list.forEach(x => { const d = new Date(x.ts).toLocaleDateString("th-TH",{day:"numeric",month:"short"});
+    (byDay[d] ??= { i:0, e:0 }); x.type==="income" ? byDay[d].i += x.amount : byDay[d].e += x.amount; });
+  const labels = Object.keys(byDay);
+  trend.data.labels = labels;
+  trend.data.datasets[0].data = labels.map(l => byDay[l].i);
+  trend.data.datasets[1].data = labels.map(l => byDay[l].e);
+  trend.update();
+
+  const ex = {}; list.filter(x=>x.type==="expense").forEach(x => ex[x.cat] = (ex[x.cat]||0) + x.amount);
+  expChart.data.labels = Object.keys(ex);
+  expChart.data.datasets[0].data = Object.values(ex);
+  expChart.data.datasets[0].backgroundColor = Object.keys(ex).map(n => EXPENSE_CATS.find(c=>c.name===n)?.color || "#888");
+  expChart.update();
+
+  const incBy = {}; list.filter(x=>x.type==="income").forEach(x => incBy[x.cat] = (incBy[x.cat]||0) + x.amount);
+  const ent = Object.entries(incBy).sort((a,b)=>b[1]-a[1]);
+  incChart.data.labels = ent.map(e=>e[0]);
+  incChart.data.datasets[0].data = ent.map(e=>e[1]);
+  incChart.data.datasets[0].backgroundColor = ent.map(e => INCOME_CATS.find(c=>c.name===e[0])?.color || "#888");
+  incChart.update();
+
+  $("txBody").innerHTML = TX.slice(0,8).map(x => `<tr>
+    <td>${new Date(x.ts).toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})}</td>
+    <td>${x.note}</td>
+    <td><span class="tag ${x.type==='income'?'in':'out'}">${x.type==='income'?'รายรับ':'รายจ่าย'}</span></td>
+    <td class="right" style="color:${x.type==='income'?'var(--income)':'var(--expense)'}">${x.type==='income'?'+':'−'}${fmtTHB(x.amount)}</td>
+  </tr>`).join("");
+
+  $("lastUpdate").textContent = "อัปเดตล่าสุด " + new Date().toLocaleTimeString("th-TH");
+}
+
+$("period").addEventListener("change", render);
+$("toggleLive").onclick = e => { live = !live; e.target.textContent = live ? "⏸ หยุดชั่วคราว" : "▶ เล่นต่อ"; };
+
+/* ================= App bootstrap ================= */
+function enterApp(user){
+  show($("loginView"), false); show($("appView"), true);
+  $("userEmail").textContent = user.email;
+  $("userMode").textContent = user.mode === "demo" ? "โหมดตัวอย่าง" : "Firebase Auth";
+  $("avatar").textContent = user.email[0].toUpperCase();
+  TX = []; seed(); render();
+  const unsub = dataApi.subscribe(user.uid, remote => { if (remote.length){ TX = remote; render(); } });
+  // Demo simulator (Firebase mode จะได้ข้อมูลจาก RTDB แทน)
+  if (user.mode === "demo") stopDemoTimer = setInterval(() => { if (live){ TX.unshift(randomTx()); render(); } }, 3000);
+  $("signOutBtn").onclick = async () => {
+    clearInterval(stopDemoTimer);
+    try { unsub && unsub(); } catch {}
+    await authApi.signOut();
+  };
+}
+
+(async () => {
+  $("demoBtn").hidden = configured;              // ตั้งค่า Firebase แล้ว = ซ่อนปุ่ม demo
+  try { configured ? await firebaseAdapter(FIREBASE_CONFIG) : demoAdapter(); }
+  catch (e){ showError("ตั้งค่า Firebase ผิดพลาด: " + e.message); }
+
+  await authApi.init();
+  authApi.watch(user => {
+    show($("loadingView"), false);
+    show($("loginView"), !user);
+    show($("appView"), !!user);
+    user ? enterApp(user) : (clearInterval(stopDemoTimer), show($("loginView"), true));
+  });
+})();
+</script>
+</body>
+</html>
