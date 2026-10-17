@@ -1,6 +1,6 @@
 // Offline shell for the PWA. API calls and uploaded images are never cached (private data).
-const CACHE = 'ben-shell-v4';
-const SHELL = ['/', '/style.css', '/extra.css', '/js/core.js', '/js/data.js', '/js/auth.js', '/js/dashboard.js', '/js/accounts.js', '/js/entry.js', '/js/nl.js', '/js/calendar.js', '/js/exports.js', '/js/chat.js', '/js/settings.js', '/js/main.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
+const CACHE = 'ben-shell-v5';
+const SHELL = ['/', '/style.css', '/extra.css', '/corners.css', '/icons/char-mom.png', '/icons/char-dad.png', '/icons/char-kid.png', '/js/core.js', '/js/data.js', '/js/auth.js', '/js/dashboard.js', '/js/accounts.js', '/js/entry.js', '/js/nl.js', '/js/calendar.js', '/js/exports.js', '/js/chat.js', '/js/settings.js', '/js/main.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

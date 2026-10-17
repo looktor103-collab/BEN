@@ -19,6 +19,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="style.css" />
 <link rel="stylesheet" href="extra.css" />
+<link rel="stylesheet" href="corners.css" />
 </head>
 <body>
 
@@ -105,29 +106,29 @@
       <div class="kpi" style="--tint:var(--warn-soft)"><div class="emo">🐷</div><div class="label">ออมไว้แล้ว</div><div class="value" id="kSaved">–</div><div class="delta muted" id="kCount"></div></div>
     </section>
 
-    <div class="card flow" id="flowBox" hidden>
+    <div class="card flow" data-corner="kid" id="flowBox" hidden>
       <h2>🥧 รายรับของคุณไปไหนบ้าง</h2>
       <div class="flow-bar"><i id="flowSpend"></i><i id="flowSaved"></i><i id="flowLeft"></i></div>
       <div class="hint" id="flowLegend"></div>
     </div>
 
     <div class="grid">
-      <div class="card"><h2>📈 รายรับ–รายจ่าย</h2><div class="hint">รายวันในช่วงที่เลือก (แปลงเป็นบาท)</div>
+      <div class="card" data-corner="dad"><h2>📈 รายรับ–รายจ่าย</h2><div class="hint">รายวันในช่วงที่เลือก (แปลงเป็นบาท)</div>
         <div class="chart-wrap"><canvas id="trendChart"></canvas></div></div>
-      <div class="card"><h2>🍩 รายจ่ายตามหมวด</h2><div class="hint">สัดส่วนในช่วงที่เลือก</div>
+      <div class="card" data-corner="mom"><h2>🍩 รายจ่ายตามหมวด</h2><div class="hint">สัดส่วนในช่วงที่เลือก</div>
         <div class="chart-wrap sm"><canvas id="expenseChart"></canvas></div></div>
     </div>
 
     <div class="grid">
-      <div class="card"><h2>📊 แนวโน้มรายเดือน</h2><div class="hint">รายรับ รายจ่าย และเงินออม 12 เดือนล่าสุด</div>
+      <div class="card" data-corner="kid"><h2>📊 แนวโน้มรายเดือน</h2><div class="hint">รายรับ รายจ่าย และเงินออม 12 เดือนล่าสุด</div>
         <div class="chart-wrap"><canvas id="monthChart"></canvas></div></div>
-      <div class="card"><h2>💳 บัญชีของฉัน</h2><div class="hint">ยอดคงเหลือแยกตามบัญชีและสกุลเงิน</div>
+      <div class="card" data-corner="mom"><h2>💳 บัญชีของฉัน</h2><div class="hint">ยอดคงเหลือแยกตามบัญชีและสกุลเงิน</div>
         <div id="acctSummary"></div>
         <div class="acct-total" id="acctTotal"></div>
         <button class="btn-sm soft" id="acctManageBtn" type="button">⚙️ จัดการบัญชี</button></div>
     </div>
 
-    <div class="card goals-card"><h2>🎯 เป้าหมายการออม</h2><div class="hint">ความคืบหน้า = รายรับ − รายจ่าย ตั้งแต่วันที่เริ่ม (อัปเดตอัตโนมัติ)</div>
+    <div class="card goals-card" data-corner="dad"><h2>🎯 เป้าหมายการออม</h2><div class="hint">ความคืบหน้า = รายรับ − รายจ่าย ตั้งแต่วันที่เริ่ม (อัปเดตอัตโนมัติ)</div>
       <div id="goalList"></div>
       <form id="goalForm" class="inline-form">
         <input id="goalName" placeholder="ชื่อเป้าหมาย เช่น เที่ยวญี่ปุ่น ✈️" required maxlength="80" />
@@ -136,7 +137,7 @@
         <button class="btn-sm primary" type="submit">เพิ่มเป้าหมาย</button>
       </form></div>
 
-    <div class="card cal-card"><div class="cal-head">
+    <div class="card cal-card" data-corner="mom"><div class="cal-head">
         <h2>📅 ปฏิทินรายการ</h2>
         <div class="cal-nav"><button class="icon-btn sm" id="calPrev" type="button" aria-label="เดือนก่อน">‹</button><b id="calTitle"></b><button class="icon-btn sm" id="calNext" type="button" aria-label="เดือนถัดไป">›</button></div>
       </div>
@@ -145,7 +146,7 @@
       <div id="calDay" class="cal-day"></div></div>
 
     <div class="grid3">
-      <div class="card"><h2>🧾 งบประมาณ</h2><div class="hint">รายเดือน หรือรายสัปดาห์ (จันทร์–อาทิตย์) แยกตามหมวด เตือนเมื่อใช้ถึง 80%</div>
+      <div class="card" data-corner="kid"><h2>🧾 งบประมาณ</h2><div class="hint">รายเดือน หรือรายสัปดาห์ (จันทร์–อาทิตย์) แยกตามหมวด เตือนเมื่อใช้ถึง 80%</div>
         <div id="budgetList"></div>
         <form id="budgetForm" class="inline-form">
           <input id="budCat" placeholder="หมวดหมู่ เช่น อาหาร" list="catList" required maxlength="60" />
@@ -153,7 +154,7 @@
           <input id="budLimit" type="number" min="0" step="1" placeholder="วงเงิน (0 = ลบ)" required />
           <button class="btn-sm primary" type="submit">บันทึก</button>
         </form></div>
-      <div class="card"><h2>📒 รายการ</h2>
+      <div class="card" data-corner="dad"><h2>📒 รายการ</h2>
         <div class="hint" id="txHint"></div>
         <div id="txList" class="tx-list"></div></div>
     </div>

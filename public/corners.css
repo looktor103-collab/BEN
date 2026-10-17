@@ -1,0 +1,21 @@
+/* Round family stickers peeking over the top-right corner of the dashboard cards */
+.card[data-corner]{position:relative}
+.card[data-corner]::after{
+  content:"";position:absolute;top:-18px;right:18px;width:62px;height:62px;border-radius:50%;
+  background:var(--panel) center/cover no-repeat;border:4px solid var(--panel);
+  box-shadow:0 6px 16px rgba(90,60,140,.22);pointer-events:none;
+  transition:transform .25s ease;
+}
+.card[data-corner]:hover::after{transform:rotate(-8deg) scale(1.06)}
+.card[data-corner=mom]::after{background-image:url(icons/char-mom.png)}
+.card[data-corner=dad]::after{background-image:url(icons/char-dad.png)}
+.card[data-corner=kid]::after{background-image:url(icons/char-kid.png)}
+/* keep card titles clear of the sticker */
+.card[data-corner]>h2{padding-right:72px}
+.card.cal-card[data-corner]>.cal-head{padding-right:80px} /* month arrows stay clear of the sticker */
+@media(max-width:700px){
+  .card[data-corner]::after{width:50px;height:50px;top:-14px;right:14px;border-width:3px}
+  .card[data-corner]>h2{padding-right:58px}
+  .card.cal-card[data-corner]>.cal-head{padding-right:66px}
+}
+@media(prefers-reduced-motion:reduce){.card[data-corner]::after{transition:none}}
